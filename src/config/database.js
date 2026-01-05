@@ -13,17 +13,31 @@ import mongoose from "mongoose";
 
 mongoose.set("bufferCommands", false);
 
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = () => {
-  return mongoose
-    .connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-    })
-    .then(() => {
-      console.log("DB Connected successfully");
-    })
-    .catch((err) => {
-      console.error("Fail to connect DB:", err.message);
-      throw err;
+    if (cached.conn) return Promise.resolve(cached.conn);
+
+    if (!cached.promise) {
+        const MONGODB_URI = process.env.MONGODB_URI;
+
+        if (!MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined in environment variables');
+        }
+
+        cached.promise = mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 10000,
+        });
+    }
+
+    return cached.promise.then((conn) => {
+        cached.conn = conn;
+        console.log("✅ MongoDB connected");
+        return conn;
     });
 };
 
