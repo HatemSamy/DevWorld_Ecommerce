@@ -69,13 +69,7 @@ export const getCategory = async (req, res, next) => {
  */
 export const createCategory = async (req, res, next) => {
     try {
-        // Debug logging
-        console.log('=== CREATE CATEGORY DEBUG ===');
-        console.log('req.body:', req.body);
-        console.log('req.file:', req.file);
-        console.log('req.user:', req.user);
-        console.log('===========================');
-
+       
         // Check if image file is uploaded
         if (!req.file) {
             return res.status(400).json({

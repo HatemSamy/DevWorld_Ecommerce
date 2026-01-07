@@ -1,31 +1,12 @@
 import express from 'express';
 import * as brandController from '../controllers/brand.controller.js';
 import { protect, admin } from '../middlewares/auth.middleware.js';
+import { validation } from '../middlewares/validation.middleware.js';
 import { createBrandSchema, updateBrandSchema } from '../validations/brand.validation.js';
 import { myMulter, fileValidation } from '../middlewares/multer.middleware.js';
 import { parseBilingualFields } from '../middlewares/parseJson.middleware.js';
 
 const router = express.Router();
-
-/**
- * Validation middleware
- */
-const validate = (schema) => {
-    return (req, res, next) => {
-        const { error } = schema.validate(req.body, { abortEarly: false });
-
-        if (error) {
-            const errors = error.details.map(detail => detail.message);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                errors
-            });
-        }
-
-        next();
-    };
-};
 
 // Public routes
 router.get('/', brandController.getAllBrands);
@@ -37,7 +18,7 @@ router.post('/',
     admin,
     myMulter(fileValidation.image).single('image'),
     parseBilingualFields, // Parse JSON strings to objects
-    validate(createBrandSchema),
+    validation({ body: createBrandSchema }),
     brandController.createBrand
 );
 
@@ -46,7 +27,7 @@ router.put('/:id',
     admin,
     myMulter(fileValidation.image).single('image'),
     parseBilingualFields, // Parse JSON strings to objects
-    validate(updateBrandSchema),
+    validation({ body: updateBrandSchema }),
     brandController.updateBrand
 );
 

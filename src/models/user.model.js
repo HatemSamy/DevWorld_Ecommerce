@@ -52,8 +52,17 @@ const userSchema = new mongoose.Schema(
         isActive: {
             type: Boolean,
             default: true
-        }
+        },
+        preferredProducts: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    default: []
+  }
+]
     },
+
+
     {
         timestamps: true
     }
