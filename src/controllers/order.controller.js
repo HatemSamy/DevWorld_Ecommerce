@@ -75,21 +75,41 @@ export const createOrder = async (req, res, next) => {
  * @access  Private
  */
 export const getMyOrders = async (req, res, next) => {
-    try {
-        const orders = await Order.find({ user: req.user._id })
-            .populate('items.product', 'name images')
-            .populate('paymentMethod', 'name')
-            .sort({ createdAt: -1 });
+  try {
+    const orders = await Order.find({ user: req.user._id })
+      .populate('items.product', 'name images')
+      .populate('paymentMethod', 'name')
+      .sort({ createdAt: -1 });
 
-        res.status(200).json({
-            success: true,
-            count: orders.length,
-            data: orders
-        });
-    } catch (error) {
-        next(error);
-    }
+    const formattedOrders = orders.map(order => ({
+      orderId: order._id,
+      date: order.createdAt,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      paymentMethod: order.paymentMethod?.name || 'cash',
+      shipping: {
+        city: order.shippingAddress.city,
+        street: order.shippingAddress.street
+      },
+      items: order.items.map(item => ({
+        productId: item.product._id,
+        name: item.product.name.en,
+        image: item.product.images?.[0] || null,
+        quantity: item.quantity,
+        price: item.priceAtPurchase
+      }))
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedOrders.length,
+      data: formattedOrders
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+
 
 /**
  * @desc    Get single order
@@ -133,36 +153,63 @@ export const getOrder = async (req, res, next) => {
  * @access  Private/Admin
  */
 export const getAllOrders = async (req, res, next) => {
-    try {
-        const { status, page = 1, limit = 20 } = req.query;
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
 
-        const query = {};
-        if (status) query.status = status;
+    const query = {};
+    if (status) query.status = status;
 
-        const skip = (Number(page) - 1) * Number(limit);
+    const skip = (Number(page) - 1) * Number(limit);
 
-        const orders = await Order.find(query)
-            .populate('items.product', 'name images')
-            .populate('paymentMethod', 'name')
-            .populate('user', 'firstName lastName email phone')
-            .skip(skip)
-            .limit(Number(limit))
-            .sort({ createdAt: -1 });
+    const orders = await Order.find(query)
+      .populate('items.product', 'name images')
+      .populate('paymentMethod', 'name')
+      .populate('user', 'firstName lastName email phone')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
 
-        const total = await Order.countDocuments(query);
+    const total = await Order.countDocuments(query);
 
-        res.status(200).json({
-            success: true,
-            count: orders.length,
-            total,
-            page: Number(page),
-            pages: Math.ceil(total / Number(limit)),
-            data: orders
-        });
-    } catch (error) {
-        next(error);
-    }
+    const formattedOrders = orders.map(order => ({
+      orderId: order._id,
+      date: order.createdAt,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      paymentMethod: order.paymentMethod?.name || 'cash',
+      customer: {
+        id: order.user._id,
+        name: `${order.user.firstName} ${order.user.lastName}`,
+        email: order.user.email,
+        phone: order.user.phone
+      },
+      shipping: {
+        city: order.shippingAddress.city,
+        street: order.shippingAddress.street
+      },
+      items: order.items.map(item => ({
+        productId: item.product._id,
+        name: item.product.name.en,
+        image: item.product.images?.[0] || null,
+        quantity: item.quantity,
+        price: item.priceAtPurchase
+      }))
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedOrders.length,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / Number(limit)),
+      data: formattedOrders
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+
+
 
 /**
  * @desc    Update order status (Admin)
@@ -170,28 +217,33 @@ export const getAllOrders = async (req, res, next) => {
  * @access  Private/Admin
  */
 export const updateOrderStatus = async (req, res, next) => {
-    try {
-        const { status } = req.body;
+  try {
+    const { status } = req.body;
 
-        const order = await Order.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true, runValidators: true }
-        );
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    ).select('_id status updatedAt');
 
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Order not found'
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Order status updated successfully',
-            data: order
-        });
-    } catch (error) {
-        next(error);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
     }
+
+    res.status(200).json({
+      success: true,
+      message: 'Order status updated successfully',
+      data: {
+        orderId: order._id,
+        status: order.status,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+

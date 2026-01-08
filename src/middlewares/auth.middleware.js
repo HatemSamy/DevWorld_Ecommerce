@@ -28,14 +28,10 @@ export const protect = async (req, res, next) => {
 
         // Verify token
         const jwtSecret = process.env.JWT_SECRET || process.env.tokenSignature || 'default-secret';
-        console.log('JWT Secret (first 10 chars):', jwtSecret?.substring(0, 10));
-
+        
         const decoded = jwt.verify(token, jwtSecret);
-        console.log('Decoded token:', decoded);
-
         // Get user from token
         req.user = await User.findById(decoded.id).select('-password');
-        console.log('User found:', req.user);
 
         if (!req.user) {
             console.log('User not found in database!');
@@ -44,8 +40,6 @@ export const protect = async (req, res, next) => {
                 message: 'User not found'
             });
         }
-
-        console.log('=== AUTH SUCCESS ===');
         next();
     } catch (error) {
         console.log('=== AUTH ERROR ===');
@@ -61,9 +55,6 @@ export const protect = async (req, res, next) => {
  * Admin authorization middleware
  */
 export const admin = (req, res, next) => {
-    console.log('=== ADMIN MIDDLEWARE DEBUG ===');
-    console.log('req.user:', req.user);
-    console.log('req.user.role:', req.user?.role);
 
     if (req.user && req.user.role === 'admin') {
         console.log('Admin check passed!');

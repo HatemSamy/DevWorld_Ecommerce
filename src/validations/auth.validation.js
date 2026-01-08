@@ -93,3 +93,15 @@ export const addAddressSchema = Joi.object({
     additionalInfo: Joi.string().allow(''),
     isDefault: Joi.boolean().default(false)
 });
+
+
+
+
+export const updatePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required().messages({
+    'string.empty': 'Current password is required'
+  }),
+  newPassword: Joi.string().min(6).required().messages({
+    'string.min': 'New password must be at least 8 characters'
+  })
+});

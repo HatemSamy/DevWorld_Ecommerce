@@ -2,13 +2,16 @@ import express from 'express';
 import * as userController from '../controllers/user.controller.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
-import { addAddressSchema } from '../validations/auth.validation.js';
+import { addAddressSchema, updatePasswordSchema } from '../validations/auth.validation.js';
 
 const router = express.Router();
 
 // Protected routes
 router.get('/profile', protect, userController.getProfile);
+router.put('/update-password', protect, validation({ body: updatePasswordSchema }), userController.updatePassword);
+
 router.post('/addresses', protect, validation({ body: addAddressSchema }), userController.addAddress);
+
 router.put('/addresses/:addressId', protect, validation({ body: addAddressSchema }), userController.updateAddress);
 router.delete('/addresses/:addressId', protect, userController.deleteAddress);
 

@@ -52,8 +52,7 @@ const orderSchema = new mongoose.Schema(
             default: 'pending'
         },
         paymentMethod: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'PaymentMethod',
+            type: String,
             required: [true, 'Payment method is required']
         },
         shippingAddress: {

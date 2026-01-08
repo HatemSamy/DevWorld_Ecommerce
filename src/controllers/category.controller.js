@@ -2,6 +2,7 @@ import Category from '../models/category.model.js';
 import { localizeDocuments, localizeDocument } from '../utils/helpers.util.js';
 import { paginate } from '../utils/pagination.util.js';
 import cloudinary from '../config/cloudinary.config.js';
+import productModel from '../models/product.model.js';
 
 /**
  * @desc    Get all categories
@@ -40,27 +41,56 @@ export const getAllCategories = async (req, res, next) => {
  * @route   GET /api/v1/categories/:id
  * @access  Public
  */
+
 export const getCategory = async (req, res, next) => {
-    try {
-        const category = await Category.findById(req.params.id);
+  try {
+    const category = await Category.findById(req.params.id);
 
-        if (!category) {
-            return res.status(404).json({
-                success: false,
-                message: 'Category not found'
-            });
-        }
-
-        const localizedCategory = localizeDocument(category, req.language);
-
-        res.status(200).json({
-            success: true,
-            data: localizedCategory
-        });
-    } catch (error) {
-        next(error);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
     }
+
+    // 🔤 Localize category
+    const localizedCategory = localizeDocument(category, req.language);
+
+    // 📦 Get products in this category
+    const products = await productModel.find({ category: category._id, isActive: true })
+      .select('name price salePrice images')
+      .sort({ createdAt: -1 });
+
+    // 🔤 Localize products
+    const localizedProducts = products.map(product => {
+      const localized = localizeDocument(product, req.language);
+      return {
+        id: localized._id,
+        name: localized.name,
+        price: localized.price,
+        salePrice: localized.salePrice,
+        image: localized.images?.[0] || null
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        category: {
+          id: localizedCategory._id,
+          name: localizedCategory.name,
+          slug: localizedCategory.slug,
+          image: localizedCategory.image
+        },
+        products: localizedProducts,
+        count: localizedProducts.length
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+
 
 /**
  * @desc    Create category
