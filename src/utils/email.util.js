@@ -1,42 +1,51 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Send email using Gmail service
+ * Create email transporter
  */
-export async function sendEmail(dest, subject, message, attachments = []) {
+const createTransporter = () => {
+    return nodemailer.createTransporter({
+        host: process.env.EMAIL_HOST,
+        port: process.env.EMAIL_PORT,
+        secure: false, // true for 465, false for other ports
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
+        }
+    });
+};
+
+/**
+ * Send email
+ */
+export const sendEmail = async ({ to, subject, text, html }) => {
     try {
-        // Create reusable transporter object using Gmail service
-        let transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.NODEMAILER_EMAIL, // Gmail address
-                pass: process.env.NODEMAILER_PASSWORD, // App password
-            },
-        });
+        const transporter = createTransporter();
 
-        // Send mail with defined transport object
-        let info = await transporter.sendMail({
-            from: `"Electronics Store" <${process.env.nodeMailerEmail}>`, // sender address
-            to: dest, // list of receivers
-            subject, // Subject line
-            html: message, // html body
-            attachments
-        });
+        const mailOptions = {
+            from: process.env.EMAIL_FROM,
+            to,
+            subject,
+            text,
+            html
+        };
 
+        const info = await transporter.sendMail(mailOptions);
         console.log('Email sent:', info.messageId);
         return info;
     } catch (error) {
         console.error('Error sending email:', error);
         throw error;
     }
-}
+};
 
 /**
  * Send password reset email
  */
 export const sendPasswordResetEmail = async (email, resetCode) => {
     const subject = 'Password Reset Code';
-    const message = `
+    const text = `Your password reset code is: ${resetCode}. This code will expire in 10 minutes.`;
+    const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Password Reset Request</h2>
       <p>You requested to reset your password. Use the following code to reset your password:</p>
@@ -48,7 +57,5 @@ export const sendPasswordResetEmail = async (email, resetCode) => {
     </div>
   `;
 
-    return await sendEmail(email, subject, message);
+    return await sendEmail({ to: email, subject, text, html });
 };
-
-export default sendEmail;

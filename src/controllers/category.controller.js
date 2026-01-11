@@ -3,6 +3,7 @@ import { localizeDocuments, localizeDocument } from '../utils/helpers.util.js';
 import { paginate } from '../utils/pagination.util.js';
 import cloudinary from '../config/cloudinary.config.js';
 import productModel from '../models/product.model.js';
+import mongoose from 'mongoose';
 
 /**
  * @desc    Get all categories
@@ -30,6 +31,187 @@ export const getAllCategories = async (req, res, next) => {
             page: parseInt(page) || 1,
             pages: Math.ceil(total / limit),
             data: localizedCategories
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @desc    Get available filter values for a specific category
+ * @route   GET /api/v1/categories/:id/filters
+ * @access  Public
+ */
+export const getCategoryFilters = async (req, res, next) => {
+    try {
+        const categoryId = req.params.id;
+
+        // Check if category exists
+        const category = await Category.findById(categoryId);
+        if (!category) {
+            return res.status(404).json({
+                success: false,
+                message: 'Category not found'
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid category ID'
+            });
+        }
+
+        const matchStage = {
+            isActive: true,
+            category: new mongoose.Types.ObjectId(categoryId)
+        };
+
+        // Aggregation pipeline to get filter values for this category
+        const pipeline = [
+            { $match: matchStage },
+
+            // Lookup brand
+            {
+                $lookup: {
+                    from: 'brands',
+                    localField: 'brand',
+                    foreignField: '_id',
+                    as: 'brand'
+                }
+            },
+            { $unwind: { path: '$brand', preserveNullAndEmptyArrays: true } },
+
+            // Group to get unique values
+            {
+                $facet: {
+                    // Brands
+                    brands: [
+                        {
+                            $group: {
+                                _id: '$brand._id',
+                                name: { $first: '$brand.name' },
+                                image: { $first: '$brand.image' },
+                                count: { $sum: 1 }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                name: 1,
+                                image: 1,
+                                count: 1
+                            }
+                        }
+                    ],
+
+                    // Price range
+                    priceRange: [
+                        {
+                            $group: {
+                                _id: null,
+                                minPrice: { $min: '$price' },
+                                maxPrice: { $max: '$price' }
+                            }
+                        }
+                    ],
+
+                    // Conditions
+                    conditions: [
+                        {
+                            $group: {
+                                _id: '$condition',
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ],
+
+                    // Dynamic attributes based on category schema
+                    attributes: [
+                        {
+                            $project: {
+                                attributes: {
+                                    $objectToArray: '$attributes'
+                                }
+                            }
+                        },
+                        { $unwind: '$attributes' },
+                        {
+                            $group: {
+                                _id: {
+                                    key: '$attributes.k',
+                                    value: '$attributes.v'
+                                },
+                                count: { $sum: 1 }
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: '$_id.key',
+                                values: {
+                                    $push: {
+                                        value: '$_id.value',
+                                        count: '$count'
+                                    }
+                                },
+                                totalCount: { $sum: '$count' }
+                            }
+                        }
+                    ]
+                }
+            }
+        ];
+
+        const result = await productModel.aggregate(pipeline);
+        const filters = result[0] || {};
+
+        // Process brands
+        const brands = (filters.brands || []).map(b => ({
+            id: b._id,
+            name: b.name,
+            image: b.image,
+            count: b.count
+        }));
+
+        // Process price range
+        const priceRange = filters.priceRange?.[0] || { minPrice: 0, maxPrice: 0 };
+
+        // Process conditions
+        const conditions = (filters.conditions || []).map(c => ({
+            value: c._id,
+            count: c.count
+        }));
+
+        // Process dynamic attributes
+        const attributes = {};
+        (filters.attributes || []).forEach(attr => {
+            attributes[attr._id] = {
+                values: attr.values,
+                totalCount: attr.totalCount
+            };
+        });
+
+        // Get category attributes schema for reference
+        const categoryAttributes = category.attributesSchema || [];
+
+        res.status(200).json({
+            success: true,
+            data: {
+                category: {
+                    id: category._id,
+                    name: localizeDocument(category, req.language).name,
+                    attributesSchema: categoryAttributes
+                },
+                filters: {
+                    brands,
+                    priceRange: {
+                        min: priceRange.minPrice,
+                        max: priceRange.maxPrice
+                    },
+                    conditions,
+                    attributes
+                }
+            }
         });
     } catch (error) {
         next(error);

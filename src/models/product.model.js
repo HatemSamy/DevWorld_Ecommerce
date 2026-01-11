@@ -83,6 +83,18 @@ const productSchema = new mongoose.Schema(
         isFeatured: {
             type: Boolean,
             default: false
+        },
+        // Calculated rating fields (updated from Rating model)
+        averageRating: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 5
+        },
+        ratingsCount: {
+            type: Number,
+            default: 0,
+            min: 0
         }
     },
     {

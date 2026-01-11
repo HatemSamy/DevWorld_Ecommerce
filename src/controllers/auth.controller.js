@@ -34,10 +34,8 @@ export const register = async (req, res, next) => {
         });
 
         // Generate JWT token
-        const jwtSecret = process.env.JWT_SECRET || process.env.tokenSignature || 'default-secret';
-        const jwtExpires = process.env.JWT_EXPIRES_IN || '30d';
-        const token = jwt.sign({ id: user._id }, jwtSecret, {
-            expiresIn: jwtExpires
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN
         });
 
         res.status(201).json({
@@ -67,15 +65,15 @@ export const register = async (req, res, next) => {
  */
 export const login = async (req, res, next) => {
     try {
-        const { phone, password } = req.body;
+        const { email, password } = req.body;
 
         // Find user and include password for comparison
-        const user = await User.findOne({ phone }).select('+password');
+        const user = await User.findOne({ email }).select('+password');
 
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid phone or password'
+                message: 'Invalid email or password'
             });
         }
 
@@ -98,10 +96,8 @@ export const login = async (req, res, next) => {
         }
 
         // Generate JWT token
-        const jwtSecret = process.env.JWT_SECRET || process.env.tokenSignature || 'default-secret';
-        const jwtExpires = process.env.JWT_EXPIRES_IN || '30d';
-        const token = jwt.sign({ id: user._id }, jwtSecret, {
-            expiresIn: jwtExpires
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN
         });
 
         res.status(200).json({
@@ -170,7 +166,36 @@ export const forgotPassword = async (req, res, next) => {
     }
 };
 
+/**
+ * @desc    Verify reset code
+ * @route   POST /api/v1/auth/verify-code
+ * @access  Public
+ */
+export const verifyCode = async (req, res, next) => {
+    try {
+        const { email, code } = req.body;
 
+        const user = await User.findOne({
+            email,
+            resetPasswordCode: code,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired verification code'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Code verified successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 
 /**
  * @desc    Reset password
@@ -179,10 +204,10 @@ export const forgotPassword = async (req, res, next) => {
  */
 export const resetPassword = async (req, res, next) => {
     try {
-        const { code, newPassword } = req.body;
+        const { email, code, newPassword } = req.body;
 
-        // Find user by reset code only
         const user = await User.findOne({
+            email,
             resetPasswordCode: code,
             resetPasswordExpires: { $gt: Date.now() }
         });

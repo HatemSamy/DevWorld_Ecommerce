@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/', categoryController.getAllCategories);
+router.get('/:id/filters', categoryController.getCategoryFilters);
 router.get('/:id', categoryController.getCategory);
 
 // Admin routes

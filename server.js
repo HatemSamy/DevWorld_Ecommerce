@@ -21,6 +21,8 @@ import paymentMethodRoutes from './src/routes/paymentMethod.routes.js';
 import homeRoutes from './src/routes/home.routes.js';
 import bannerRoutes from './src/routes/banner.routes.js';
 import cartRoutes from './src/routes/cart.routes.js';
+import wishlistRoutes from './src/routes/wishlist.routes.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -60,6 +62,8 @@ app.use('/api/v1/payment-methods', paymentMethodRoutes);
 app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/banner', bannerRoutes);
 app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
+
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

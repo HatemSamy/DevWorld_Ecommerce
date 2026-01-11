@@ -35,6 +35,14 @@ const userSchema = new mongoose.Schema(
             required: [true, 'Phone number is required'],
             unique: true
         },
+        wishlist: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Product'
+            }
+        ],
+    
+    
         password: {
             type: String,
             required: [true, 'Password is required'],
@@ -47,12 +55,16 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin'],
             default: 'user'
         },
+
+        
         resetPasswordCode: String,
         resetPasswordExpires: Date,
         isActive: {
             type: Boolean,
             default: true
         },
+
+        
         preferredProducts: [
   {
     type: mongoose.Schema.Types.ObjectId,
