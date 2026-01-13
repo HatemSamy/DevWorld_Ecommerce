@@ -65,10 +65,10 @@ export const register = async (req, res, next) => {
  */
 export const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { phone, password } = req.body;
 
         // Find user and include password for comparison
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ phone }).select('+password');
 
         if (!user) {
             return res.status(401).json({
@@ -91,7 +91,7 @@ export const login = async (req, res, next) => {
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid email or password'
+                message: 'Invalid phone or password'
             });
         }
 
