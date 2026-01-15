@@ -10,6 +10,7 @@ const router = express.Router();
 router.post('/', protect, validation({ body: createOrderSchema }), orderController.createOrder);
 router.get('/my-orders', protect, orderController.getMyOrders);
 router.get('/:id', protect, orderController.getOrder);
+router.put('/:id/cancel', protect, orderController.cancelOrder);
 
 // Admin routes
 router.get('/admin/all', protect, admin, orderController.getAllOrders);

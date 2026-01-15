@@ -29,15 +29,10 @@ const productSchema = new mongoose.Schema(
             required: [true, 'Price is required'],
             min: 0
         },
+        // Sale price validation (must be non-negative); relation with price is enforced in controllers
         salePrice: {
             type: Number,
-            min: 0,
-            validate: {
-                validator: function (value) {
-                    return !value || value < this.price;
-                },
-                message: 'Sale price must be less than regular price'
-            }
+            min: 0
         },
         images: {
             type: [String],

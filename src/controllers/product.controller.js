@@ -456,6 +456,8 @@ export const updateProduct = async (req, res, next) => {
     try {
         const product = await Product.findById(req.params.id);
 
+
+        console.log(req.body)
         if (!product) {
             return res.status(404).json({
                 success: false,
@@ -494,6 +496,8 @@ export const updateProduct = async (req, res, next) => {
             req.body,
             { new: true, runValidators: true }
         );
+ 
+
 
         res.status(200).json({
             success: true,

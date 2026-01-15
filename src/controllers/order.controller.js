@@ -211,6 +211,75 @@ export const getAllOrders = async (req, res, next) => {
 
 
 
+
+
+
+
+/**
+ * @desc    Cancel an order
+ * @route   PUT /api/v1/orders/:id/cancel
+ * @access  Private
+ */
+export const cancelOrder = async (req, res, next) => {
+  try {
+      const { id } = req.params;
+      const userId = req.user._id;
+
+      // Find the order
+      const order = await Order.findById(id);
+
+      if (!order) {
+          return res.status(404).json({
+              success: false,
+              message: 'Order not found'
+          });
+      }
+
+      // Verify order belongs to the user
+      if (order.user.toString() !== userId.toString()) {
+          return res.status(403).json({
+              success: false,
+              message: 'Not authorized to cancel this order'
+          });
+      }
+
+      // Check if order can be cancelled
+      const cancellableStatuses = ['pending', 'processing'];
+      if (!cancellableStatuses.includes(order.status)) {
+          return res.status(400).json({
+              success: false,
+              message: `Cannot cancel order with status: ${order.status}`
+          });
+      }
+
+      // Restore product stock
+      for (const item of order.items) {
+          const product = await Product.findById(item.product);
+          if (product) {
+              product.stock += item.quantity;
+              await product.save();
+          }
+      }
+
+      // Update order status to cancelled
+      order.status = 'cancelled';
+      await order.save();
+
+      res.status(200).json({
+          success: true,
+          message: 'Order cancelled successfully',
+          data: {
+              orderId: order._id,
+              status: order.status,
+              updatedAt: order.updatedAt
+          }
+      });
+  } catch (error) {
+      next(error);
+  }
+};
+
+
 /**
  * @desc    Update order status (Admin)
  * @route   PUT /api/v1/orders/:id/status

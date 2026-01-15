@@ -12,12 +12,15 @@ export const getHomePageData = async (req, res, next) => {
     try {
         const now = new Date();
 
-        // Get the singleton banner
-        const banner = await Banner.getSingleton();
-        const activeBannerImages = banner && banner.isActive
-            ? banner.images
+        // Get main banner
+        const mainBanner = await Banner.findOne({
+            feature: 'Main',
+            isActive: true
+        });
+        const activeBannerImages = mainBanner && mainBanner.isActive
+            ? mainBanner.images
                 .filter(img => img.isActive)
-                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .sort((a, b) => a.order - b.order)
             : [];
 
         // Get active offers

@@ -1,30 +1,24 @@
 import Joi from 'joi';
 
-/**
- * Bilingual field schema (optional)
- */
-const bilingualSchema = Joi.object({
-    en: Joi.string().allow(''),
-    ar: Joi.string().allow('')
-});
+// Valid banner types
+export const VALID_BANNER_TYPES = ['main', 'secondary'];
 
 /**
- * Slide validation schema
+ * Create banner validation
  */
-const slideSchema = Joi.object({
-    _id: Joi.string().optional(), // Allow existing slide IDs for updates
-    imageUrl: Joi.string().uri().required(),
-    title: bilingualSchema,
-    subtitle: bilingualSchema,
-    linkUrl: Joi.string().uri().allow(''),
-    displayOrder: Joi.number().integer().min(0).default(0),
-    isActive: Joi.boolean().default(true)
+export const createBannerSchema = Joi.object({
+    title: Joi.string().required().trim(),
+    linkUrl: Joi.string().uri().allow('').optional(),
+    bannerType: Joi.string().valid(...VALID_BANNER_TYPES).default('main'),
+    isActive: Joi.string().valid('true', 'false').optional()
 });
 
 /**
  * Update banner validation
  */
 export const updateBannerSchema = Joi.object({
-    images: Joi.array().items(slideSchema),
-    isActive: Joi.boolean()
-}).min(1);
+    title: Joi.string().trim().optional(),
+    linkUrl: Joi.string().uri().allow('').optional(),
+    bannerType: Joi.string().valid(...VALID_BANNER_TYPES).optional(),
+    isActive: Joi.string().valid('true', 'false').optional()
+});

@@ -1,49 +1,48 @@
 import mongoose from 'mongoose';
 
-const slideSchema = new mongoose.Schema({
-    imageUrl: {
-        type: String,
-        required: [true, 'Image URL is required']
-    },
-    title: {
-        en: {
-            type: String,
-            trim: true
-        },
-        ar: {
-            type: String,
-            trim: true
-        }
-    },
-    subtitle: {
-        en: {
-            type: String,
-            trim: true
-        },
-        ar: {
-            type: String,
-            trim: true
-        }
-    },
-    linkUrl: {
-        type: String,
-        trim: true
-    },
-    displayOrder: {
-        type: Number,
-        default: 0
-    },
-    isActive: {
-        type: Boolean,
-        default: true
-    }
-}, { _id: true });
+// Banner type constants for easy reference
+export const BANNER_TYPES = {
+    MAIN: 'main',
+    SECONDARY: 'secondary'
+};
 
 const bannerSchema = new mongoose.Schema(
     {
+        title: {
+            type: String,
+            required: [true, 'Banner title is required'],
+            trim: true
+        },
+        // Multiple images for slider functionality
         images: {
-            type: [slideSchema],
-            default: []
+            type: [{
+                imageUrl: {
+                    type: String,
+                    required: true
+                },
+                publicId: {
+                    type: String,
+                    required: true
+                }
+            }],
+            validate: {
+                validator: function (v) {
+                    return v && v.length > 0;
+                },
+                message: 'At least one image is required'
+            }
+        },
+        linkUrl: {
+            type: String,
+            trim: true
+        },
+        bannerType: {
+            type: String,
+            enum: {
+                values: Object.values(BANNER_TYPES),
+                message: 'Banner type must be one of: main, secondary'
+            },
+            default: BANNER_TYPES.MAIN
         },
         isActive: {
             type: Boolean,
@@ -55,17 +54,7 @@ const bannerSchema = new mongoose.Schema(
     }
 );
 
-/**
- * Static method to get or create the singleton banner
- */
-bannerSchema.statics.getSingleton = async function () {
-    let banner = await this.findOne();
-
-    if (!banner) {
-        banner = await this.create({ images: [], isActive: true });
-    }
-
-    return banner;
-};
+// Compound index for efficient querying by type and status
+bannerSchema.index({ bannerType: 1, isActive: 1 });
 
 export default mongoose.model('Banner', bannerSchema);
