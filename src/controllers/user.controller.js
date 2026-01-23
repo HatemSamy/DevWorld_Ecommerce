@@ -1,148 +1,146 @@
 import bcryptjs from 'bcryptjs';
 import User from '../models/user.model.js';
+import { paginate } from '../utils/pagination.util.js';
+import { asyncHandler } from '../utils/asyncHandler.util.js';
+import { ApiError } from '../utils/ApiError.js';
+
+/**
+ * @desc    Get all users (Admin)
+ * @route   GET /api/v1/users/admin
+ * @access  Private/Admin
+ */
+export const getAllUsers = asyncHandler(async (req, res) => {
+    const { page, size } = req.query;
+    const { limit, skip } = paginate(page, size);
+
+    const users = await User.find()
+        .select('_id firstName lastName email phone role isActive createdAt')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean();
+
+    const total = await User.countDocuments();
+
+    res.status(200).json({
+        success: true,
+        count: users.length,
+        total,
+        page: parseInt(page) || 1,
+        pages: Math.ceil(total / limit),
+        data: users
+    });
+});
 
 /**
  * @desc    Get user profile
  * @route   GET /api/v1/users/profile
  * @access  Private
  */
-export const getProfile = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user._id).select('-password');
+export const getProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select('-password');
 
-        res.status(200).json({
-            success: true,
-            data: user
-        });
-    } catch (error) {
-        next(error);
-    }
-};
+    res.status(200).json({
+        success: true,
+        data: user
+    });
+});
 
 /**
  * @desc    Add address to user
  * @route   POST /api/v1/users/addresses
  * @access  Private
  */
-export const addAddress = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user._id);
+export const addAddress = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
 
-        // If this is set as default, unset all other defaults
-        if (req.body.isDefault) {
-            user.addresses.forEach(addr => addr.isDefault = false);
-        }
-
-        user.addresses.push(req.body);
-        await user.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Address added successfully',
-            data: user.addresses
-        });
-    } catch (error) {
-        next(error);
+    if (req.body.isDefault) {
+        user.addresses.forEach(addr => addr.isDefault = false);
     }
-};
+
+    user.addresses.push(req.body);
+    await user.save();
+
+    res.status(201).json({
+        success: true,
+        message: 'Address added successfully',
+        data: user.addresses
+    });
+});
 
 /**
  * @desc    Update address
  * @route   PUT /api/v1/users/addresses/:addressId
  * @access  Private
  */
-export const updateAddress = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user._id);
-        const address = user.addresses.id(req.params.addressId);
+export const updateAddress = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+    const address = user.addresses.id(req.params.addressId);
 
-        if (!address) {
-            return res.status(404).json({
-                success: false,
-                message: 'Address not found'
-            });
-        }
-
-        // If setting as default, unset all other defaults
-        if (req.body.isDefault) {
-            user.addresses.forEach(addr => addr.isDefault = false);
-        }
-
-        Object.assign(address, req.body);
-        await user.save();
-
-        res.status(200).json({
-            success: true,
-            message: 'Address updated successfully',
-            data: user.addresses
-        });
-    } catch (error) {
-        next(error);
+    if (!address) {
+        throw ApiError.notFound('Address not found');
     }
-};
+
+    if (req.body.isDefault) {
+        user.addresses.forEach(addr => addr.isDefault = false);
+    }
+
+    Object.assign(address, req.body);
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Address updated successfully',
+        data: user.addresses
+    });
+});
 
 /**
  * @desc    Delete address
  * @route   DELETE /api/v1/users/addresses/:addressId
  * @access  Private
  */
-export const deleteAddress = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user._id);
+export const deleteAddress = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
 
-        user.addresses.pull(req.params.addressId);
-        await user.save();
+    user.addresses.pull(req.params.addressId);
+    await user.save();
 
-        res.status(200).json({
-            success: true,
-            message: 'Address deleted successfully',
-            data: user.addresses
-        });
-    } catch (error) {
-        next(error);
-    }
-};
+    res.status(200).json({
+        success: true,
+        message: 'Address deleted successfully',
+        data: user.addresses
+    });
+});
 
-
-
-
-
-export const updatePassword = async (req, res, next) => {
-  try {
+/**
+ * @desc    Update password
+ * @route   PUT /api/v1/users/password
+ * @access  Private
+ */
+export const updatePassword = asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password and new password are required'
-      });
+        throw ApiError.badRequest('Current password and new password are required');
     }
 
     const user = await User.findById(req.user._id).select('+password');
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+        throw ApiError.notFound('User not found');
     }
 
     const isMatch = await bcryptjs.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
+        throw ApiError.badRequest('Current password is incorrect');
     }
 
-    user.password = newPassword; 
+    user.password = newPassword;
     await user.save();
 
     res.status(200).json({
-      success: true,
-      message: 'Password updated successfully'
+        success: true,
+        message: 'Password updated successfully'
     });
-  } catch (error) {
-    next(error);
-  }
-};
+});

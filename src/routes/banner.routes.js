@@ -7,16 +7,14 @@ import { myMulter } from '../middlewares/multer.middleware.js';
 
 const router = express.Router();
 
-// Public routes
 router.get('/', bannerController.getAllBanners);
 router.get('/:id', bannerController.getBannerById);
 
-// Admin routes
 router.post(
     '/',
     protect,
     admin,
-    myMulter().array('images', 10), // Allow up to 10 images for slider
+    myMulter().array('images', 10),
     validation({ body: createBannerSchema }),
     bannerController.createBanner
 );
@@ -25,14 +23,13 @@ router.put(
     '/:id',
     protect,
     admin,
-    myMulter().array('images', 10), // Allow up to 10 images for slider
+    myMulter().array('images', 10),
     validation({ body: updateBannerSchema }),
     bannerController.updateBanner
 );
 
 router.delete('/:id', protect, admin, bannerController.deleteBanner);
 
-// Image management routes
 router.post(
     '/:id/images',
     protect,

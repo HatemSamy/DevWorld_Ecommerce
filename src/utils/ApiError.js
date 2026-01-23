@@ -1,5 +1,3 @@
-// src/utils/ApiError.js
-
 /**
  * Custom API Error class for handling application errors
  * @extends Error
@@ -17,7 +15,6 @@ export class ApiError extends Error {
         this.errors = errors;
         this.name = 'ApiError';
 
-        // Maintains proper stack trace for where our error was thrown
         Error.captureStackTrace(this, this.constructor);
     }
 

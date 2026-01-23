@@ -29,7 +29,6 @@ const productSchema = new mongoose.Schema(
             required: [true, 'Price is required'],
             min: 0
         },
-        // Sale price validation (must be non-negative); relation with price is enforced in controllers
         salePrice: {
             type: Number,
             min: 0
@@ -65,7 +64,6 @@ const productSchema = new mongoose.Schema(
             enum: ['new', 'used'],
             default: 'new'
         },
-        // Dynamic attributes based on category
         attributes: {
             type: Map,
             of: mongoose.Schema.Types.Mixed,
@@ -79,7 +77,10 @@ const productSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
-        // Calculated rating fields (updated from Rating model)
+        isTrending: {
+            type: Boolean,
+            default: false
+        },
         averageRating: {
             type: Number,
             default: 0,
@@ -97,13 +98,13 @@ const productSchema = new mongoose.Schema(
     }
 );
 
-// Indexes for filtering
 productSchema.index({ brand: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ 'name.en': 'text', 'name.ar': 'text' });
+productSchema.index({ 'name.en': 1, 'name.ar': 1 });
+productSchema.index({ isTrending: 1 });
 
-// Virtual for effective price (sale price if available, otherwise regular price)
 productSchema.virtual('effectivePrice').get(function () {
     return this.salePrice || this.price;
 });

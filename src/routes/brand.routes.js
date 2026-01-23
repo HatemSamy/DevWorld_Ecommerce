@@ -8,6 +8,10 @@ import { parseBilingualFields } from '../middlewares/parseJson.middleware.js';
 
 const router = express.Router();
 
+// Admin routes - must come before public routes to avoid route conflicts
+router.get('/admin', protect, admin, brandController.getAllBrandsAdmin);
+router.get('/admin/:id', protect, admin, brandController.getBrandAdmin);
+
 // Public routes
 router.get('/', brandController.getAllBrands);
 router.get('/:id', brandController.getBrand);
