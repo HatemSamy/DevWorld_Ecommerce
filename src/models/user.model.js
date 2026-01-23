@@ -2,6 +2,11 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const addressSchema = new mongoose.Schema({
+    governorate: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Governorate'
+        // Optional field - maintains backward compatibility with existing addresses
+    },
     city: { type: String, required: true },
     street: { type: String, required: true },
     building: String,
@@ -41,8 +46,8 @@ const userSchema = new mongoose.Schema(
                 ref: 'Product'
             }
         ],
-    
-    
+
+
         password: {
             type: String,
             required: [true, 'Password is required'],
@@ -56,7 +61,7 @@ const userSchema = new mongoose.Schema(
             default: 'user'
         },
 
-        
+
         resetPasswordCode: String,
         resetPasswordExpires: Date,
         isActive: {
@@ -64,14 +69,14 @@ const userSchema = new mongoose.Schema(
             default: true
         },
 
-        
+
         preferredProducts: [
-  {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    default: []
-  }
-]
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Product',
+                default: []
+            }
+        ]
     },
 
 

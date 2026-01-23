@@ -54,6 +54,16 @@ export const getProfile = asyncHandler(async (req, res) => {
 export const addAddress = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
 
+    // Validate governorate if provided
+    if (req.body.governorate) {
+        const Governorate = (await import('../models/governorate.model.js')).default;
+        const governorateExists = await Governorate.findById(req.body.governorate);
+
+        if (!governorateExists) {
+            throw ApiError.badRequest('Invalid governorate. Please select a valid governorate from the list.');
+        }
+    }
+
     if (req.body.isDefault) {
         user.addresses.forEach(addr => addr.isDefault = false);
     }
@@ -79,6 +89,16 @@ export const updateAddress = asyncHandler(async (req, res) => {
 
     if (!address) {
         throw ApiError.notFound('Address not found');
+    }
+
+    // Validate governorate if being updated
+    if (req.body.governorate) {
+        const Governorate = (await import('../models/governorate.model.js')).default;
+        const governorateExists = await Governorate.findById(req.body.governorate);
+
+        if (!governorateExists) {
+            throw ApiError.badRequest('Invalid governorate. Please select a valid governorate from the list.');
+        }
     }
 
     if (req.body.isDefault) {

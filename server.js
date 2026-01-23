@@ -22,6 +22,7 @@ import homeRoutes from './src/routes/home.routes.js';
 import bannerRoutes from './src/routes/banner.routes.js';
 import cartRoutes from './src/routes/cart.routes.js';
 import wishlistRoutes from './src/routes/wishlist.routes.js';
+import governorateRoutes from './src/routes/governorate.routes.js';
 
 
 // Load environment variables
@@ -63,6 +64,7 @@ app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/banners', bannerRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
+app.use('/api/v1/governorates', governorateRoutes);
 
 
 // Swagger Documentation

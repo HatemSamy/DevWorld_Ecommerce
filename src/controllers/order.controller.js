@@ -78,9 +78,12 @@ export const getMyOrders = asyncHandler(async (req, res) => {
     status: order.status,
     totalAmount: order.totalAmount,
     paymentMethod: order.paymentMethod?.name || 'cash',
-    shipping: {
+    shippingAddress: {
+      street: order.shippingAddress.street,
       city: order.shippingAddress.city,
-      street: order.shippingAddress.street
+      state: order.shippingAddress.state,
+      postalCode: order.shippingAddress.postalCode,
+      country: order.shippingAddress.country
     },
     items: order.items.map(item => ({
       productId: item.product._id,
@@ -99,28 +102,77 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get single order
+ * @desc    Get single order details (User & Admin)
  * @route   GET /api/v1/orders/:id
- * @access  Private
+ * @access  Private (User: own orders only, Admin: all orders)
  */
 export const getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate('items.product', 'name images')
-    .populate('paymentMethod', 'name')
-    .populate('user', 'firstName lastName email phone');
+    .populate('items.product', 'name images price salePrice')
+    .populate('user', 'firstName lastName email phone role');
 
   if (!order) {
     throw ApiError.notFound('Order not found');
   }
 
-  // Check if user owns this order or is admin
-  if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+  // Check authorization: user can only view own orders, admin can view all
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = order.user._id.toString() === req.user._id.toString();
+
+  if (!isOwner && !isAdmin) {
     throw ApiError.forbidden('Not authorized to access this order');
   }
 
+  // Format order details
+  const formattedOrder = {
+    orderId: order._id,
+    orderNumber: `#${order._id.toString().slice(-8).toUpperCase()}`,
+    date: order.createdAt,
+    status: order.status,
+    totalAmount: order.totalAmount,
+
+    // Full customer details for all users
+    customer: {
+      id: order.user._id,
+      firstName: order.user.firstName,
+      lastName: order.user.lastName,
+      fullName: `${order.user.firstName} ${order.user.lastName}`,
+      email: order.user.email,
+      phone: order.user.phone,
+      role: order.user.role
+    },
+
+    // Payment method is stored as a string in the Order model
+    paymentMethod: order.paymentMethod || 'Not specified',
+
+    shippingAddress: {
+      street: order.shippingAddress.street,
+      city: order.shippingAddress.city,
+      state: order.shippingAddress.state,
+      postalCode: order.shippingAddress.postalCode,
+      country: order.shippingAddress.country
+    },
+
+    items: order.items.map(item => ({
+      productId: item.product._id,
+      name: item.product.name,
+      image: item.product.images?.[0] || null,
+      quantity: item.quantity,
+      priceAtPurchase: item.priceAtPurchase,
+      currentPrice: item.product.price,
+      currentSalePrice: item.product.salePrice,
+      subtotal: item.priceAtPurchase * item.quantity,
+      attributesSelected: item.attributesSelected || {}
+    })),
+
+    notes: order.notes || '',
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt
+  };
+
   res.status(200).json({
     success: true,
-    data: order
+    data: formattedOrder
   });
 });
 
