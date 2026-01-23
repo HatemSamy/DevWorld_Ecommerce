@@ -146,11 +146,12 @@ export const getOrder = asyncHandler(async (req, res) => {
     paymentMethod: order.paymentMethod || 'Not specified',
 
     shippingAddress: {
-      street: order.shippingAddress.street,
       city: order.shippingAddress.city,
-      state: order.shippingAddress.state,
-      postalCode: order.shippingAddress.postalCode,
-      country: order.shippingAddress.country
+      street: order.shippingAddress.street,
+      building: order.shippingAddress.building || '',
+      floor: order.shippingAddress.floor || '',
+      apartment: order.shippingAddress.apartment || '',
+      additionalInfo: order.shippingAddress.additionalInfo || ''
     },
 
     items: order.items.map(item => ({
