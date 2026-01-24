@@ -13,7 +13,7 @@ export const getCart = asyncHandler(async (req, res) => {
     let cart = await Cart.findOne({ user: req.user._id })
         .populate({
             path: 'items.product',
-            select: 'name description images price salePrice stock isActive'
+            select: 'name description images price stock isActive'
         });
 
     if (!cart) {
@@ -62,7 +62,7 @@ export const addToCart = asyncHandler(async (req, res) => {
         item => item.product.toString() === productId
     );
 
-    const price = product.salePrice || product.price;
+    const price = product.price;
 
     if (existingItemIndex > -1) {
         // Update quantity if product already exists
@@ -87,7 +87,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     // Populate and return
     cart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price salePrice stock isActive'
+        select: 'name description images price stock isActive'
     });
 
     const localizedCart = localizeDocument(cart.toObject(), req.language);
@@ -130,7 +130,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     // Populate and return
     const updatedCart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price salePrice stock isActive'
+        select: 'name description images price stock isActive'
     });
 
     const localizedCart = localizeDocument(updatedCart.toObject(), req.language);
@@ -166,7 +166,7 @@ export const removeFromCart = asyncHandler(async (req, res) => {
     // Populate and return
     const updatedCart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price salePrice stock isActive'
+        select: 'name description images price stock isActive'
     });
 
     const localizedCart = localizeDocument(updatedCart.toObject(), req.language);

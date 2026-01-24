@@ -26,6 +26,11 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
     {
+        orderCode: {
+            type: String,
+            unique: true,
+            trim: true
+        },
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
@@ -69,6 +74,29 @@ const orderSchema = new mongoose.Schema(
         timestamps: true
     }
 );
+
+// Pre-save hook to generate unique order code
+orderSchema.pre('save', async function (next) {
+    if (!this.orderCode) {
+        try {
+            // Find the last order to get the highest order code
+            const lastOrder = await this.constructor.findOne({}, {}, { sort: { createdAt: -1 } });
+
+            let nextNumber = 1;
+            if (lastOrder && lastOrder.orderCode) {
+                // Extract the number from the last order code (e.g., DW0001 -> 0001)
+                const lastNumber = parseInt(lastOrder.orderCode.substring(2));
+                nextNumber = lastNumber + 1;
+            }
+
+            // Format as DW + 4 digits (e.g., DW0001, DW0002, etc.)
+            this.orderCode = `DW${String(nextNumber).padStart(4, '0')}`;
+        } catch (error) {
+            return next(error);
+        }
+    }
+    next();
+});
 
 // Index for faster user queries
 orderSchema.index({ user: 1, createdAt: -1 });

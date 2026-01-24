@@ -614,7 +614,7 @@ export const getPreferredProducts = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id).populate({
         path: 'preferredProducts',
         match: { isActive: true },
-        select: 'name price salePrice images stock'
+        select: 'name price images stock'
     });
 
     res.status(200).json({
@@ -657,11 +657,13 @@ const updateProductRatingStats = async (productId) => {
 
 /**
  * @desc    Add or update product rating
- * @route   POST /api/v1/products/:id/:ratingvalue/rating
+ * @route   POST /api/v1/products/:id/rating
  * @access  Private
  */
 export const addOrUpdateRating = asyncHandler(async (req, res) => {
-    const { id, ratingvalue } = req.params;
+    const { id } = req.params;
+    const { ratingvalue } = req.body;
+
     const userId = req.user._id;
 
     const rating = Number(ratingvalue); // convert string param to number
@@ -821,7 +823,7 @@ export const getAllProductsAdmin = asyncHandler(async (req, res) => {
     const { limit, skip } = paginate(page, size);
 
     const products = await Product.find()
-        .select('name price salePrice stock images isActive isFeatured isTrending brand category createdAt')
+        .select('name price stock images isActive isFeatured isTrending brand category createdAt')
         .populate('brand', 'name image')
         .populate('category', 'name')
         .limit(limit)

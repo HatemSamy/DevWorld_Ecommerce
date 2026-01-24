@@ -43,7 +43,7 @@ router.get('/:id', productController.getProduct);
 
 router.post('/:productId/preferred', protect, productController.togglePreferredProduct);
 
-router.post('/:id/:ratingvalue/rating',
+router.post('/:id/rating',
   protect,
   validation({ params: createRatingSchema }),
   productController.addOrUpdateRating

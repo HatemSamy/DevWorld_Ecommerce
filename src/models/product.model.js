@@ -29,10 +29,6 @@ const productSchema = new mongoose.Schema(
             required: [true, 'Price is required'],
             min: 0
         },
-        salePrice: {
-            type: Number,
-            min: 0
-        },
         images: {
             type: [String],
             required: [true, 'At least one image is required'],
@@ -104,9 +100,5 @@ productSchema.index({ price: 1 });
 productSchema.index({ 'name.en': 'text', 'name.ar': 'text' });
 productSchema.index({ 'name.en': 1, 'name.ar': 1 });
 productSchema.index({ isTrending: 1 });
-
-productSchema.virtual('effectivePrice').get(function () {
-    return this.salePrice || this.price;
-});
 
 export default mongoose.model('Product', productSchema);

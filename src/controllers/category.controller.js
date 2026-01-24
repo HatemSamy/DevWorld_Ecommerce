@@ -224,7 +224,7 @@ export const getCategory = asyncHandler(async (req, res) => {
 
     // 📦 Get products in this category
     const products = await productModel.find({ category: category._id, isActive: true })
-        .select('name price salePrice images')
+        .select('name price images')
         .sort({ createdAt: -1 });
 
     // 🔤 Localize products
@@ -234,7 +234,6 @@ export const getCategory = asyncHandler(async (req, res) => {
             id: localized._id,
             name: localized.name,
             price: localized.price,
-            salePrice: localized.salePrice,
             image: localized.images?.[0] || null
         };
     });

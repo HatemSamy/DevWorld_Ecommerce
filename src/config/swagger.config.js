@@ -205,9 +205,6 @@ const options = {
                         price: {
                             type: 'number'
                         },
-                        salePrice: {
-                            type: 'number'
-                        },
                         images: {
                             type: 'array',
                             items: {

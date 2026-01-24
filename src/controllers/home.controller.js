@@ -29,7 +29,7 @@ export const getHomePageData = asyncHandler(async (req, res) => {
         validFrom: { $lte: now },
         validUntil: { $gte: now }
     })
-        .populate('products', 'name images price salePrice')
+        .populate('products', 'name images price')
         .populate('categories', 'name')
         .sort({ createdAt: -1 })
         .limit(10);

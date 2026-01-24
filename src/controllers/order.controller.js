@@ -26,7 +26,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       throw ApiError.badRequest(`Insufficient stock for product: ${product.name.en}`);
     }
 
-    const effectivePrice = product.salePrice || product.price;
+    const effectivePrice = product.price;
     totalAmount += effectivePrice * item.quantity;
 
     processedItems.push({
@@ -57,7 +57,10 @@ export const createOrder = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Order placed successfully',
-    data: order
+    data: {
+      ...order.toObject(),
+      orderCode: order.orderCode
+    }
   });
 });
 
@@ -74,6 +77,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 
   const formattedOrders = orders.map(order => ({
     orderId: order._id,
+    orderCode: order.orderCode,
     date: order.createdAt,
     status: order.status,
     totalAmount: order.totalAmount,
@@ -108,7 +112,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
  */
 export const getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate('items.product', 'name images price salePrice')
+    .populate('items.product', 'name images price')
     .populate('user', 'firstName lastName email phone role');
 
   if (!order) {
@@ -126,6 +130,7 @@ export const getOrder = asyncHandler(async (req, res) => {
   // Format order details
   const formattedOrder = {
     orderId: order._id,
+    orderCode: order.orderCode,
     orderNumber: `#${order._id.toString().slice(-8).toUpperCase()}`,
     date: order.createdAt,
     status: order.status,
@@ -139,7 +144,6 @@ export const getOrder = asyncHandler(async (req, res) => {
       fullName: `${order.user.firstName} ${order.user.lastName}`,
       email: order.user.email,
       phone: order.user.phone,
-      role: order.user.role
     },
 
     // Payment method is stored as a string in the Order model
@@ -159,10 +163,8 @@ export const getOrder = asyncHandler(async (req, res) => {
       name: item.product.name,
       image: item.product.images?.[0] || null,
       quantity: item.quantity,
-      priceAtPurchase: item.priceAtPurchase,
-      currentPrice: item.product.price,
-      currentSalePrice: item.product.salePrice,
-      subtotal: item.priceAtPurchase * item.quantity,
+      unitPrice: item.priceAtPurchase,
+      totalPrice: item.priceAtPurchase * item.quantity,
       attributesSelected: item.attributesSelected || {}
     })),
 
@@ -202,6 +204,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
 
   const formattedOrders = orders.map(order => ({
     orderId: order._id,
+    orderCode: order.orderCode,
     date: order.createdAt,
     status: order.status,
     totalAmount: order.totalAmount,
@@ -278,6 +281,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     message: 'Order cancelled successfully',
     data: {
       orderId: order._id,
+      orderCode: order.orderCode,
       status: order.status,
       updatedAt: order.updatedAt
     }
@@ -296,7 +300,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     req.params.id,
     { status },
     { new: true, runValidators: true }
-  ).select('_id status updatedAt');
+  ).select('_id orderCode status updatedAt');
 
   if (!order) {
     throw ApiError.notFound('Order not found');
@@ -307,6 +311,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     message: 'Order status updated successfully',
     data: {
       orderId: order._id,
+      orderCode: order.orderCode,
       status: order.status,
       updatedAt: order.updatedAt
     }

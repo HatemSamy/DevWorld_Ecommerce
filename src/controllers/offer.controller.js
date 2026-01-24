@@ -16,7 +16,7 @@ export const getAllOffers = asyncHandler(async (req, res) => {
         validFrom: { $lte: now },
         validUntil: { $gte: now }
     })
-        .populate('products', 'name images price salePrice')
+        .populate('products', 'name images price')
         .populate('categories', 'name')
         .sort({ createdAt: -1 });
 
@@ -36,7 +36,7 @@ export const getAllOffers = asyncHandler(async (req, res) => {
  */
 export const getOffer = asyncHandler(async (req, res) => {
     const offer = await Offer.findById(req.params.id)
-        .populate('products', 'name images price salePrice')
+        .populate('products', 'name images price')
         .populate('categories', 'name');
 
     if (!offer) {
