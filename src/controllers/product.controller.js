@@ -338,10 +338,14 @@ export const getProductSuggestions = asyncHandler(async (req, res) => {
         .limit(10)
         .lean();
 
-    // Extract unique product names (localized based on user's language preference)
-    const localizedSuggestions = suggestions.map(product =>
-        localizeDocument(product, req.language).name
-    );
+    // Extract product id and name (localized based on user's language preference)
+    const localizedSuggestions = suggestions.map(product => {
+        const localized = localizeDocument(product, req.language);
+        return {
+            _id: product._id,
+            name: localized.name
+        };
+    });
 
     res.status(200).json({
         success: true,
