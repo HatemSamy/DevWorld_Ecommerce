@@ -450,6 +450,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
         throw ApiError.notFound('Product not found');
     }
 
+    let imageUrls;
+
     if (req.files && req.files.length > 0) {
         if (product.images && product.images.length > 0) {
             const deletePromises = product.images.map(imageUrl => {
@@ -469,12 +471,18 @@ export const updateProduct = asyncHandler(async (req, res) => {
         );
 
         const results = await Promise.all(uploadPromises);
-        req.body.images = results.map(result => result.secure_url);
+        imageUrls = results.map(result => result.secure_url);
     }
+
+    // Prepare update data - add images separately if new ones were uploaded
+    const updateData = {
+        ...req.body,
+        ...(imageUrls && { images: imageUrls })
+    };
 
     const updatedProduct = await Product.findByIdAndUpdate(
         req.params.id,
-        req.body,
+        updateData,
         { new: true, runValidators: true }
     );
 

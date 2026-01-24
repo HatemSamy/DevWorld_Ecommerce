@@ -26,6 +26,7 @@ export const createProductSchema = Joi.object({
 
 /**
  * Update product validation
+ * Note: images are handled separately by the controller when files are uploaded through multer
  */
 export const updateProductSchema = Joi.object({
     name: bilingualSchema,
