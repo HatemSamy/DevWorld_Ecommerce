@@ -334,16 +334,18 @@ export const getProductSuggestions = asyncHandler(async (req, res) => {
             { 'name.ar': { $regex: `^${q}`, $options: 'i' } }
         ]
     })
-        .select('name')
+        .select('name description images')
         .limit(10)
         .lean();
 
-    // Extract product id and name (localized based on user's language preference)
+    // Extract product id, name, description, and image (localized based on user's language preference)
     const localizedSuggestions = suggestions.map(product => {
         const localized = localizeDocument(product, req.language);
         return {
             _id: product._id,
-            name: localized.name
+            name: localized.name,
+            description: localized.description,
+            image: product.images && product.images.length > 0 ? product.images[0] : null
         };
     });
 
