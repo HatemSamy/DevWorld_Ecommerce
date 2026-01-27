@@ -1,6 +1,6 @@
 import express from 'express';
 import * as governorateController from '../controllers/governorate.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { createGovernorateSchema, updateGovernorateSchema } from '../validations/governorate.validation.js';
 
@@ -14,7 +14,7 @@ router.get('/:id', governorateController.getGovernorate);
 router.post(
     '/',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     validation({ body: createGovernorateSchema }),
     governorateController.createGovernorate
 );
@@ -22,7 +22,7 @@ router.post(
 router.put(
     '/:id',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     validation({ body: updateGovernorateSchema }),
     governorateController.updateGovernorate
 );
@@ -30,7 +30,7 @@ router.put(
 router.delete(
     '/:id',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     governorateController.deleteGovernorate
 );
 

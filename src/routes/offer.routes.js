@@ -1,6 +1,6 @@
 import express from 'express';
 import * as offerController from '../controllers/offer.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { createOfferSchema, updateOfferSchema } from '../validations/offer.validation.js';
 
@@ -11,8 +11,8 @@ router.get('/', offerController.getAllOffers);
 router.get('/:id', offerController.getOffer);
 
 // Admin routes
-router.post('/', protect, admin, validation({ body: createOfferSchema }), offerController.createOffer);
-router.put('/:id', protect, admin, validation({ body: updateOfferSchema }), offerController.updateOffer);
-router.delete('/:id', protect, admin, offerController.deleteOffer);
+router.post('/', protect, authorize('admin', 'superAdmin'), validation({ body: createOfferSchema }), offerController.createOffer);
+router.put('/:id', protect, authorize('admin', 'superAdmin'), validation({ body: updateOfferSchema }), offerController.updateOffer);
+router.delete('/:id', protect, authorize('admin', 'superAdmin'), offerController.deleteOffer);
 
 export default router;

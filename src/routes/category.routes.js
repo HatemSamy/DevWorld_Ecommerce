@@ -1,6 +1,6 @@
 import express from 'express';
 import * as categoryController from '../controllers/category.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { createCategorySchema, updateCategorySchema } from '../validations/category.validation.js';
 import { myMulter, fileValidation } from '../middlewares/multer.middleware.js';
@@ -10,12 +10,12 @@ const router = express.Router();
 
 router.get('/', categoryController.getAllCategories);
 
-router.get('/admin', protect, admin, categoryController.getAllCategoriesAdmin);
-router.get('/admin/:id', protect, admin, categoryController.getCategoryAdmin);
+router.get('/admin', protect, authorize('admin', 'superAdmin'), categoryController.getAllCategoriesAdmin);
+router.get('/admin/:id', protect, authorize('admin', 'superAdmin'), categoryController.getCategoryAdmin);
 
 router.post('/admin',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     myMulter(fileValidation.image).single('image'),
     parseCategoryFields,
     validation({ body: createCategorySchema }),
@@ -24,14 +24,14 @@ router.post('/admin',
 
 router.put('/admin/:id',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     myMulter(fileValidation.image).single('image'),
     parseCategoryFields,
     validation({ body: updateCategorySchema }),
     categoryController.updateCategory
 );
 
-router.delete('/admin/:id', protect, admin, categoryController.deleteCategory);
+router.delete('/admin/:id', protect, authorize('admin', 'superAdmin'), categoryController.deleteCategory);
 
 router.get('/:id/filters', categoryController.getCategoryFilters);
 router.get('/:id', categoryController.getCategory);

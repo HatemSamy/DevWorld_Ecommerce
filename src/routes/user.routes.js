@@ -1,12 +1,12 @@
 import express from 'express';
 import * as userController from '../controllers/user.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { addAddressSchema, updatePasswordSchema } from '../validations/auth.validation.js';
 
 const router = express.Router();
 
-router.get('/admin/getusers', protect, admin, userController.getAllUsers);
+router.get('/admin/getusers', protect, authorize('admin', 'superAdmin'), userController.getAllUsers);
 
 router.get('/profile', protect, userController.getProfile);
 router.put('/update-password', protect, validation({ body: updatePasswordSchema }), userController.updatePassword);

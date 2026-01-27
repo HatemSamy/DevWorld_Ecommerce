@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 // Banner type constants for easy reference
 export const BANNER_TYPES = {
     MAIN: 'main',
-    SECONDARY: 'secondary'
+    SECONDARY: 'secondary',
+    THIRD: 'third'
 };
 
 const bannerSchema = new mongoose.Schema(
@@ -40,7 +41,7 @@ const bannerSchema = new mongoose.Schema(
             type: String,
             enum: {
                 values: Object.values(BANNER_TYPES),
-                message: 'Banner type must be one of: main, secondary'
+                message: 'Banner type must be one of: main, secondary, third'
             },
             default: BANNER_TYPES.MAIN
         },

@@ -1,6 +1,6 @@
 import express from 'express';
 import * as quotationController from '../controllers/quotation.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { createQuotationSchema, updateQuotationSchema } from '../validations/quotation.validation.js';
 
@@ -27,6 +27,6 @@ router.get('/:id', protect, quotationController.getQuotation);
 router.put('/:id', protect, validation({ body: updateQuotationSchema }), quotationController.updateQuotation);
 
 // Admin routes
-router.get('/admin/all', protect, admin, quotationController.getAllQuotations);
+router.get('/admin/all', protect, authorize('admin', 'superAdmin'), quotationController.getAllQuotations);
 
 export default router;

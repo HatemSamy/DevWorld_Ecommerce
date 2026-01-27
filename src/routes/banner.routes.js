@@ -1,6 +1,6 @@
 import express from 'express';
 import * as bannerController from '../controllers/banner.controller.js';
-import { protect, admin } from '../middlewares/auth.middleware.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import { createBannerSchema, updateBannerSchema } from '../validations/banner.validation.js';
 import { myMulter } from '../middlewares/multer.middleware.js';
@@ -13,7 +13,7 @@ router.get('/:id', bannerController.getBannerById);
 router.post(
     '/',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     myMulter().array('images', 10),
     validation({ body: createBannerSchema }),
     bannerController.createBanner
@@ -22,22 +22,22 @@ router.post(
 router.put(
     '/:id',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     myMulter().array('images', 10),
     validation({ body: updateBannerSchema }),
     bannerController.updateBanner
 );
 
-router.delete('/:id', protect, admin, bannerController.deleteBanner);
+router.delete('/:id', protect, authorize('admin', 'superAdmin'), bannerController.deleteBanner);
 
 router.post(
     '/:id/images',
     protect,
-    admin,
+    authorize('admin', 'superAdmin'),
     myMulter().array('images', 10),
     bannerController.addImagesToBanner
 );
 
-router.delete('/:id/images/:imageId', protect, admin, bannerController.removeImageFromBanner);
+router.delete('/:id/images/:imageId', protect, authorize('admin', 'superAdmin'), bannerController.removeImageFromBanner);
 
 export default router;

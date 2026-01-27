@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 // Valid banner types
-export const VALID_BANNER_TYPES = ['main', 'secondary'];
+export const VALID_BANNER_TYPES = ['main', 'secondary', 'third'];
 
 /**
  * Create banner validation

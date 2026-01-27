@@ -160,7 +160,7 @@ const options = {
                         },
                         role: {
                             type: 'string',
-                            enum: ['user', 'admin'],
+                            enum: ['user', 'admin', 'superAdmin'],
                             default: 'user'
                         },
                         addresses: {
@@ -281,10 +281,17 @@ const options = {
             {
                 name: 'Home',
                 description: 'Home page data aggregation'
+            },
+            {
+                name: 'Admin Management',
+                description: 'Admin account creation and management'
             }
         ]
     },
-    apis: ['./src/routes/*.js'] // Path to the API routes
+    apis: [
+        './src/routes/*.js',
+        './src/swagger/*.js'
+    ]
 };
 
 const swaggerSpec = swaggerJsdoc(options);

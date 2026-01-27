@@ -17,9 +17,9 @@ export const protect = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
+
         req.user = await User.findById(decoded.id).select('-password');
-     
+
         if (!req.user) {
             return res.status(401).json({
                 success: false,
@@ -38,15 +38,29 @@ export const protect = async (req, res, next) => {
     }
 };
 
-export const admin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
-        console.log(req.user);
+/**
+ * Centralized role-based authorization middleware
+ * @param {Array<string>} allowedRoles - Array of roles allowed to access the route
+ * @returns {Function} Express middleware function
+ */
+export const authorize = (...allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Not authenticated'
+            });
+        }
+
+        if (!allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: `Access denied. Required role: ${allowedRoles.join(' or ')}`
+            });
+        }
 
         next();
-    } else {
-        res.status(403).json({
-            success: false,
-            message: 'Access denied. Admin only.'
-        });
-    }
+    };
 };
+
+
