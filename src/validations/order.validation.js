@@ -28,7 +28,8 @@ export const createOrderSchema = Joi.object({
     items: Joi.array().items(orderItemSchema).min(1).required(),
     paymentMethod: Joi.string().required(),
     shippingAddress: shippingAddressSchema.required(),
-    notes: Joi.string().allow('')
+    notes: Joi.string().allow(''),
+    couponCode: Joi.string().min(3).max(20).uppercase().trim().allow(null, '')
 });
 
 /**

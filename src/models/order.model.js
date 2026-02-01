@@ -46,6 +46,24 @@ const orderSchema = new mongoose.Schema(
                 message: 'Order must have at least one item'
             }
         },
+        subtotal: {
+            type: Number,
+            min: 0
+        },
+        couponCode: {
+            type: String,
+            uppercase: true,
+            trim: true
+        },
+        discountValue: {
+            type: Number,
+            min: 0,
+            max: 100
+        },
+        discountAmount: {
+            type: Number,
+            min: 0
+        },
         totalAmount: {
             type: Number,
             required: [true, 'Total amount is required'],

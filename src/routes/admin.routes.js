@@ -1,5 +1,6 @@
 import express from 'express';
 import * as adminController from '../controllers/admin.controller.js';
+import * as dashboardController from '../controllers/dashboard.controller.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validation } from '../middlewares/validation.middleware.js';
 import {
@@ -12,6 +13,17 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(protect);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/statistics
+ * @desc    Get dashboard statistics (orders, products, users counts)
+ * @access  Private/Admin/SuperAdmin
+ */
+router.get(
+    '/dashboard/statistics',
+    authorize('admin', 'superAdmin'),
+    dashboardController.getStatistics
+);
 
 /**
  * @route   POST /api/v1/admin

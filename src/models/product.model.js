@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { generateSlug, ensureUniqueSlug } from '../utils/slug.util.js';
 
 const productSchema = new mongoose.Schema(
     {
@@ -13,6 +14,13 @@ const productSchema = new mongoose.Schema(
                 required: [true, 'Product name in Arabic is required'],
                 trim: true
             }
+        },
+        slug: {
+            type: String,
+            unique: true,
+            sparse: true, // Allows nulls during migration
+            lowercase: true,
+            trim: true
         },
         description: {
             en: {
@@ -93,6 +101,44 @@ const productSchema = new mongoose.Schema(
         timestamps: true
     }
 );
+
+productSchema.pre('save', async function (next) {
+    if (!this.slug || this.isModified('name.en') || this.isModified('description.en') || this.isModified('name.ar') || this.isModified('description.ar')) {
+        let baseSlug = '';
+
+        if (this.name.en && this.name.en.trim()) {
+            const descriptionWords = this.description.en
+                ? this.description.en.split(' ').slice(0, 5).join(' ')
+                : '';
+
+            const combinedText = `${this.name.en} ${descriptionWords}`.trim();
+            baseSlug = generateSlug(combinedText);
+        }
+
+        if (!baseSlug || baseSlug.length < 3) {
+            const arabicName = this.name.ar || '';
+            const latinChars = arabicName.match(/[a-zA-Z0-9]+/g);
+
+            if (latinChars && latinChars.length > 0) {
+                baseSlug = generateSlug(latinChars.join(' '));
+            } else {
+                baseSlug = 'product';
+            }
+        }
+
+        if (!baseSlug || baseSlug.length < 2) {
+            baseSlug = 'product';
+        }
+
+        this.slug = await ensureUniqueSlug(
+            this.constructor,
+            baseSlug,
+            this._id
+        );
+    }
+
+    next();
+});
 
 productSchema.index({ brand: 1 });
 productSchema.index({ category: 1 });

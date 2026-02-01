@@ -9,6 +9,7 @@ import cloudinary from '../config/cloudinary.config.js';
 import User from '../models/user.model.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
+import { isValidObjectId } from '../utils/slug.util.js';
 
 /**
  * @desc    Get all products with advanced filtering using MongoDB aggregation
@@ -334,15 +335,16 @@ export const getProductSuggestions = asyncHandler(async (req, res) => {
             { 'name.ar': { $regex: `^${q}`, $options: 'i' } }
         ]
     })
-        .select('name description images')
+        .select('name description images slug')
         .limit(10)
         .lean();
 
-    // Extract product id, name, description, and image (localized based on user's language preference)
+    // Extract product id, name, description, image, and slug (localized based on user's language preference)
     const localizedSuggestions = suggestions.map(product => {
         const localized = localizeDocument(product, req.language);
         return {
             _id: product._id,
+            slug: product.slug,
             name: localized.name,
             description: localized.description,
             image: product.images && product.images.length > 0 ? product.images[0] : null
@@ -357,14 +359,26 @@ export const getProductSuggestions = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get single product
+ * @desc    Get single product (supports both ID and slug)
  * @route   GET /api/v1/products/:id
  * @access  Public
  */
 export const getProduct = asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id)
-        .populate('brand', 'name image')
-        .populate('category', 'name attributesSchema');
+    const identifier = req.params.id;
+    let product;
+
+    // Check if identifier is MongoDB ObjectId (24 hex characters) or slug
+    if (isValidObjectId(identifier)) {
+        // It's an ID - use existing logic
+        product = await Product.findById(identifier)
+            .populate('brand', 'name image')
+            .populate('category', 'name attributesSchema');
+    } else {
+        // It's a slug - find by slug
+        product = await Product.findOne({ slug: identifier.toLowerCase() })
+            .populate('brand', 'name image')
+            .populate('category', 'name attributesSchema');
+    }
 
     if (!product) {
         throw ApiError.notFound('Product not found');

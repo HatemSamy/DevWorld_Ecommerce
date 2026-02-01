@@ -3,22 +3,29 @@ import Product from '../models/product.model.js';
 import { localizeDocument } from '../utils/helpers.util.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
+import { mergeGuestCartToUser } from '../utils/cartMerge.util.js';
+import { isValidGuestId } from '../utils/guestId.util.js';
 
 /**
- * @desc    Get user's cart
+ * @desc    Get user's or guest's cart
  * @route   GET /api/v1/cart
- * @access  Private
+ * @access  Public (with optional auth)
  */
 export const getCart = asyncHandler(async (req, res) => {
-    let cart = await Cart.findOne({ user: req.user._id })
-        .populate({
-            path: 'items.product',
-            select: 'name description images price stock isActive'
-        });
+    const query = req.isGuest
+        ? { guestId: req.guestId }
+        : { user: req.user._id };
+
+    let cart = await Cart.findOne(query).populate({
+        path: 'items.product',
+        select: 'name description images price stock slug'
+    });
 
     if (!cart) {
-        // Create empty cart if doesn't exist
-        cart = await Cart.create({ user: req.user._id, items: [] });
+        const cartData = req.isGuest
+            ? { guestId: req.guestId, items: [] }
+            : { user: req.user._id, items: [] };
+        cart = await Cart.create(cartData);
     }
 
     const localizedCart = localizeDocument(cart.toObject(), req.language);
@@ -32,12 +39,11 @@ export const getCart = asyncHandler(async (req, res) => {
 /**
  * @desc    Add item to cart
  * @route   POST /api/v1/cart
- * @access  Private
+ * @access  Public (with optional auth)
  */
 export const addToCart = asyncHandler(async (req, res) => {
     const { product: productId, quantity, attributes } = req.body;
 
-    // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
         throw ApiError.notFound('Product not found');
@@ -51,13 +57,18 @@ export const addToCart = asyncHandler(async (req, res) => {
         throw ApiError.badRequest(`Only ${product.stock} items available in stock`);
     }
 
-    // Get or create cart
-    let cart = await Cart.findOne({ user: req.user._id });
+    const query = req.isGuest
+        ? { guestId: req.guestId }
+        : { user: req.user._id };
+
+    let cart = await Cart.findOne(query);
     if (!cart) {
-        cart = new Cart({ user: req.user._id, items: [] });
+        const cartData = req.isGuest
+            ? { guestId: req.guestId, items: [] }
+            : { user: req.user._id, items: [] };
+        cart = new Cart(cartData);
     }
 
-    // Check if product already in cart
     const existingItemIndex = cart.items.findIndex(
         item => item.product.toString() === productId
     );
@@ -65,15 +76,12 @@ export const addToCart = asyncHandler(async (req, res) => {
     const price = product.price;
 
     if (existingItemIndex > -1) {
-        // Update quantity if product already exists
         cart.items[existingItemIndex].quantity += quantity;
 
-        // Check stock again
         if (product.stock < cart.items[existingItemIndex].quantity) {
             throw ApiError.badRequest(`Only ${product.stock} items available in stock`);
         }
     } else {
-        // Add new item
         cart.items.push({
             product: productId,
             quantity,
@@ -84,10 +92,9 @@ export const addToCart = asyncHandler(async (req, res) => {
 
     await cart.save();
 
-    // Populate and return
     cart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price stock isActive'
+        select: 'name description images price stock isActive slug'
     });
 
     const localizedCart = localizeDocument(cart.toObject(), req.language);
@@ -102,13 +109,17 @@ export const addToCart = asyncHandler(async (req, res) => {
 /**
  * @desc    Update cart item quantity
  * @route   PUT /api/v1/cart/:itemId
- * @access  Private
+ * @access  Public (with optional auth)
  */
 export const updateCartItem = asyncHandler(async (req, res) => {
     const { itemId } = req.params;
     const { quantity } = req.body;
 
-    const cart = await Cart.findOne({ user: req.user._id });
+    const query = req.isGuest
+        ? { guestId: req.guestId }
+        : { user: req.user._id };
+
+    const cart = await Cart.findOne(query);
     if (!cart) {
         throw ApiError.notFound('Cart not found');
     }
@@ -118,7 +129,6 @@ export const updateCartItem = asyncHandler(async (req, res) => {
         throw ApiError.notFound('Item not found in cart');
     }
 
-    // Check product stock
     const product = await Product.findById(item.product);
     if (product && product.stock < quantity) {
         throw ApiError.badRequest(`Only ${product.stock} items available in stock`);
@@ -127,10 +137,9 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     item.quantity = quantity;
     await cart.save();
 
-    // Populate and return
     const updatedCart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price stock isActive'
+        select: 'name description images price stock isActive slug'
     });
 
     const localizedCart = localizeDocument(updatedCart.toObject(), req.language);
@@ -145,12 +154,16 @@ export const updateCartItem = asyncHandler(async (req, res) => {
 /**
  * @desc    Remove item from cart
  * @route   DELETE /api/v1/cart/:itemId
- * @access  Private
+ * @access  Public (with optional auth)
  */
 export const removeFromCart = asyncHandler(async (req, res) => {
     const { itemId } = req.params;
 
-    const cart = await Cart.findOne({ user: req.user._id });
+    const query = req.isGuest
+        ? { guestId: req.guestId }
+        : { user: req.user._id };
+
+    const cart = await Cart.findOne(query);
     if (!cart) {
         throw ApiError.notFound('Cart not found');
     }
@@ -163,10 +176,9 @@ export const removeFromCart = asyncHandler(async (req, res) => {
     item.deleteOne();
     await cart.save();
 
-    // Populate and return
     const updatedCart = await Cart.findById(cart._id).populate({
         path: 'items.product',
-        select: 'name description images price stock isActive'
+        select: 'name description images price stock isActive slug'
     });
 
     const localizedCart = localizeDocument(updatedCart.toObject(), req.language);
@@ -181,10 +193,14 @@ export const removeFromCart = asyncHandler(async (req, res) => {
 /**
  * @desc    Clear cart
  * @route   DELETE /api/v1/cart
- * @access  Private
+ * @access  Public (with optional auth)
  */
 export const clearCart = asyncHandler(async (req, res) => {
-    const cart = await Cart.findOne({ user: req.user._id });
+    const query = req.isGuest
+        ? { guestId: req.guestId }
+        : { user: req.user._id };
+
+    const cart = await Cart.findOne(query);
     if (!cart) {
         throw ApiError.notFound('Cart not found');
     }
@@ -196,5 +212,41 @@ export const clearCart = asyncHandler(async (req, res) => {
         success: true,
         message: 'Cart cleared successfully',
         data: cart
+    });
+});
+
+/**
+ * @desc    Merge guest cart into user cart
+ * @route   POST /api/v1/cart/merge
+ * @access  Private
+ */
+export const mergeCart = asyncHandler(async (req, res) => {
+    const { guestId } = req.body;
+
+    if (!guestId || !isValidGuestId(guestId)) {
+        throw ApiError.badRequest('Invalid guest ID');
+    }
+
+    const mergedCart = await mergeGuestCartToUser(guestId, req.user._id);
+
+    if (!mergedCart) {
+        return res.status(200).json({
+            success: true,
+            message: 'No guest cart to merge',
+            data: null
+        });
+    }
+
+    const populatedCart = await Cart.findById(mergedCart._id).populate({
+        path: 'items.product',
+        select: 'name description images price stock isActive slug'
+    });
+
+    const localizedCart = localizeDocument(populatedCart.toObject(), req.language);
+
+    res.status(200).json({
+        success: true,
+        message: 'Carts merged successfully',
+        data: localizedCart
     });
 });

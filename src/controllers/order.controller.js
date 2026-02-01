@@ -1,7 +1,10 @@
 import Order from '../models/order.model.js';
 import Product from '../models/product.model.js';
+import Coupon from '../models/coupon.model.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
+import { validateCoupon } from './coupon.controller.js';
+import mongoose from 'mongoose';
 
 /**
  * @desc    Create new order
@@ -9,59 +12,137 @@ import { ApiError } from '../utils/ApiError.js';
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res) => {
-  const { items, paymentMethod, shippingAddress, notes } = req.body;
+  const { items, paymentMethod, shippingAddress, notes, couponCode } = req.body;
 
-  // Calculate total and validate products
-  let totalAmount = 0;
-  const processedItems = [];
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  for (const item of items) {
-    const product = await Product.findById(item.product);
+  try {
+    // Calculate subtotal and validate products
+    let subtotal = 0;
+    const processedItems = [];
 
-    if (!product) {
-      throw ApiError.notFound(`Product not found: ${item.product}`);
+    for (const item of items) {
+      const product = await Product.findById(item.product).session(session);
+
+      if (!product) {
+        throw ApiError.notFound(`Product not found: ${item.product}`);
+      }
+
+      if (product.stock < item.quantity) {
+        throw ApiError.badRequest(`Insufficient stock for product: ${product.name.en}`);
+      }
+
+      const effectivePrice = product.price;
+      subtotal += effectivePrice * item.quantity;
+
+      processedItems.push({
+        product: item.product,
+        quantity: item.quantity,
+        priceAtPurchase: effectivePrice,
+        attributesSelected: item.attributesSelected || {}
+      });
+
+      // Reduce stock
+      product.stock -= item.quantity;
+      await product.save({ session });
     }
 
-    if (product.stock < item.quantity) {
-      throw ApiError.badRequest(`Insufficient stock for product: ${product.name.en}`);
+    // Initialize order data
+    let totalAmount = subtotal;
+    let discountAmount = 0;
+    let discountValue = null;
+    let appliedCouponCode = null;
+
+    // Apply coupon if provided
+    if (couponCode && couponCode.trim()) {
+      const couponValidation = await validateCoupon(couponCode, subtotal);
+
+      if (!couponValidation.isValid) {
+        throw ApiError.badRequest(couponValidation.message);
+      }
+
+      // Calculate final amounts
+      discountAmount = couponValidation.discountAmount;
+      discountValue = couponValidation.coupon.value;
+      appliedCouponCode = couponValidation.coupon.code;
+      totalAmount = subtotal - discountAmount;
+
+      // Increment coupon usage count atomically
+      await Coupon.findByIdAndUpdate(
+        couponValidation.coupon._id,
+        { $inc: { usedCount: 1 } },
+        { session }
+      );
     }
 
-    const effectivePrice = product.price;
-    totalAmount += effectivePrice * item.quantity;
+    // Create order with coupon snapshot if applicable
+    const orderData = {
+      user: req.user._id,
+      items: processedItems,
+      subtotal,
+      totalAmount,
+      paymentMethod,
+      shippingAddress,
+      notes
+    };
 
-    processedItems.push({
-      product: item.product,
-      quantity: item.quantity,
-      priceAtPurchase: effectivePrice,
-      attributesSelected: item.attributesSelected || {}
+    // Add coupon fields only if coupon was applied
+    if (appliedCouponCode) {
+      orderData.couponCode = appliedCouponCode;
+      orderData.discountValue = discountValue;
+      orderData.discountAmount = discountAmount;
+    }
+
+    const order = await Order.create([orderData], { session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // Populate order details
+    await order[0].populate('items.product', 'name images');
+    await order[0].populate('paymentMethod', 'name');
+
+    // Prepare clear response with pricing breakdown
+    const responseData = {
+      orderId: order[0]._id,
+      orderCode: order[0].orderCode,
+      user: order[0].user,
+      items: order[0].items,
+      paymentMethod: order[0].paymentMethod,
+      shippingAddress: order[0].shippingAddress,
+      notes: order[0].notes,
+      status: order[0].status,
+
+      // Clear pricing breakdown
+      pricing: {
+        subtotal: subtotal,
+        totalBeforeDiscount: subtotal,
+        discount: appliedCouponCode ? {
+          couponCode: appliedCouponCode,
+          discountPercentage: discountValue,
+          discountAmount: discountAmount
+        } : null,
+        totalAfterDiscount: totalAmount,
+      },
+
+      createdAt: order[0].createdAt,
+      updatedAt: order[0].updatedAt
+    };
+
+    res.status(201).json({
+      success: true,
+      message: 'Order placed successfully',
+      data: responseData
     });
-
-    // Reduce stock
-    product.stock -= item.quantity;
-    await product.save();
+  } catch (error) {
+    // Rollback transaction on error
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  // Create order
-  const order = await Order.create({
-    user: req.user._id,
-    items: processedItems,
-    totalAmount,
-    paymentMethod,
-    shippingAddress,
-    notes
-  });
-
-  await order.populate('items.product', 'name images');
-  await order.populate('paymentMethod', 'name');
-
-  res.status(201).json({
-    success: true,
-    message: 'Order placed successfully',
-    data: {
-      ...order.toObject(),
-      orderCode: order.orderCode
-    }
-  });
 });
 
 /**
@@ -134,6 +215,10 @@ export const getOrder = asyncHandler(async (req, res) => {
     orderNumber: `#${order._id.toString().slice(-8).toUpperCase()}`,
     date: order.createdAt,
     status: order.status,
+    subtotal: order.subtotal || order.totalAmount,
+    couponCode: order.couponCode || null,
+    discountValue: order.discountValue || null,
+    discountAmount: order.discountAmount || 0,
     totalAmount: order.totalAmount,
 
     // Full customer details for all users
