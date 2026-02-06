@@ -26,6 +26,7 @@ import governorateRoutes from './src/routes/governorate.routes.js';
 import quotationRoutes from './src/routes/quotation.routes.js';
 import adminRoutes from './src/routes/admin.routes.js';
 import couponRoutes from './src/routes/coupon.routes.js';
+import contactRoutes from './src/routes/contact.routes.js';
 
 
 
@@ -72,6 +73,7 @@ app.use('/api/v1/governorates', governorateRoutes);
 app.use('/api/v1/quotations', quotationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/coupons', couponRoutes);
+app.use('/api/v1/contacts', contactRoutes);
 
 
 
