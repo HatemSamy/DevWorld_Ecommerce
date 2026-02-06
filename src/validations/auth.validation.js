@@ -29,6 +29,10 @@ export const registerSchema = Joi.object({
         .messages({
             'string.empty': 'Password is required',
             'string.min': 'Password must be at least 6 characters'
+        }),
+    guestId: Joi.string().optional()
+        .messages({
+            'string.base': 'Guest ID must be a string'
         })
 });
 
@@ -43,6 +47,10 @@ export const loginSchema = Joi.object({
     password: Joi.string().required()
         .messages({
             'string.empty': 'Password is required'
+        }),
+    guestId: Joi.string().optional()
+        .messages({
+            'string.base': 'Guest ID must be a string'
         })
 });
 
@@ -98,10 +106,10 @@ export const addAddressSchema = Joi.object({
 
 
 export const updatePasswordSchema = Joi.object({
-  currentPassword: Joi.string().required().messages({
-    'string.empty': 'Current password is required'
-  }),
-  newPassword: Joi.string().min(6).required().messages({
-    'string.min': 'New password must be at least 8 characters'
-  })
+    currentPassword: Joi.string().required().messages({
+        'string.empty': 'Current password is required'
+    }),
+    newPassword: Joi.string().min(6).required().messages({
+        'string.min': 'New password must be at least 8 characters'
+    })
 });

@@ -4,6 +4,7 @@ import { sendPasswordResetEmail } from '../utils/email.util.js';
 import { generateVerificationCode } from '../utils/helpers.util.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
+import { mergeGuestCartToUser } from '../utils/cartMerge.util.js';
 
 /**
  * @desc    Register user
@@ -11,7 +12,7 @@ import { ApiError } from '../utils/ApiError.js';
  * @access  Public
  */
 export const register = asyncHandler(async (req, res) => {
-    const { firstName, lastName, email, phone, password } = req.body;
+    const { firstName, lastName, email, phone, password, guestId } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
@@ -37,6 +38,13 @@ export const register = asyncHandler(async (req, res) => {
         expiresIn: process.env.JWT_EXPIRES_IN
     });
 
+    // Merge guest cart to user cart if guestId is provided
+    let cartMerged = false;
+    if (guestId) {
+        const mergedCart = await mergeGuestCartToUser(guestId, user._id);
+        cartMerged = !!mergedCart;
+    }
+
     res.status(201).json({
         success: true,
         message: 'User registered successfully',
@@ -49,7 +57,8 @@ export const register = asyncHandler(async (req, res) => {
                 phone: user.phone,
                 role: user.role
             },
-            token
+            token,
+            cartMerged
         }
     });
 });
@@ -60,7 +69,7 @@ export const register = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const login = asyncHandler(async (req, res) => {
-    const { phone, password } = req.body;
+    const { phone, password, guestId } = req.body;
 
     // Find user and include password for comparison
     const user = await User.findOne({ phone }).select('+password');
@@ -86,6 +95,13 @@ export const login = asyncHandler(async (req, res) => {
         expiresIn: process.env.JWT_EXPIRES_IN
     });
 
+    // Merge guest cart to user cart if guestId is provided
+    let cartMerged = false;
+    if (guestId) {
+        const mergedCart = await mergeGuestCartToUser(guestId, user._id);
+        cartMerged = !!mergedCart;
+    }
+
     res.status(200).json({
         success: true,
         message: 'Login successful',
@@ -98,7 +114,8 @@ export const login = asyncHandler(async (req, res) => {
                 phone: user.phone,
                 role: user.role
             },
-            token
+            token,
+            cartMerged
         }
     });
 });
