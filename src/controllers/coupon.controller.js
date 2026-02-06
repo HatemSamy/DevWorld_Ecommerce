@@ -73,6 +73,7 @@ export const validateCoupon = async (couponCode, orderSubtotal) => {
     };
 };
 
+
 /**
  * @desc    Create new coupon
  * @route   POST /api/v1/coupons
@@ -212,6 +213,48 @@ export const deleteCoupon = asyncHandler(async (req, res) => {
         data: {
             id: coupon._id,
             code: coupon.code
+        }
+    });
+});
+
+/**
+ * @desc    Apply coupon to calculate discount
+ * @route   POST /api/v1/coupons/apply
+ * @access  Private
+ */
+export const applyCoupon = asyncHandler(async (req, res) => {
+    const { couponCode, subtotal } = req.body;
+
+    // Validate coupon code
+    if (!couponCode || !couponCode.trim()) {
+        throw ApiError.badRequest('Coupon code is required');
+    }
+
+    // Validate subtotal
+    if (!subtotal || subtotal <= 0) {
+        throw ApiError.badRequest('Valid subtotal is required');
+    }
+
+    // Use the validateCoupon function to check coupon validity
+    const couponValidation = await validateCoupon(couponCode, subtotal);
+
+    if (!couponValidation.isValid) {
+        throw ApiError.badRequest(couponValidation.message);
+    }
+
+    // Return discount details
+    res.status(200).json({
+        success: true,
+        message: 'Coupon is valid',
+        data: {
+            couponCode: couponValidation.coupon.code,
+            discountPercentage: couponValidation.coupon.value,
+            discountAmount: couponValidation.discountAmount,
+            subtotal: subtotal,
+            totalAfterDiscount: subtotal - couponValidation.discountAmount,
+            expiresAt: couponValidation.coupon.expiresAt,
+            minOrderAmount: couponValidation.coupon.minOrderAmount,
+            maxDiscountAmount: couponValidation.coupon.maxDiscountAmount
         }
     });
 });

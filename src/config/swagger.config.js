@@ -285,6 +285,10 @@ const options = {
             {
                 name: 'Admin Management',
                 description: 'Admin account creation and management'
+            },
+            {
+                name: 'Coupons',
+                description: 'Coupon management and validation'
             }
         ]
     },

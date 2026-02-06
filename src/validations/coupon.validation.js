@@ -102,7 +102,7 @@ export const listCouponsQuerySchema = Joi.object({
 });
 
 /**
- * Apply coupon validation (used in order creation)
+ * Apply coupon validation (for standalone apply endpoint)
  */
 export const applyCouponSchema = Joi.object({
     couponCode: Joi.string()
@@ -115,5 +115,12 @@ export const applyCouponSchema = Joi.object({
             'string.min': 'Coupon code must be at least 3 characters',
             'string.max': 'Coupon code must not exceed 20 characters',
             'any.required': 'Coupon code is required'
+        }),
+    subtotal: Joi.number()
+        .min(0)
+        .required()
+        .messages({
+            'number.min': 'Subtotal must be a positive number',
+            'any.required': 'Subtotal is required'
         })
 });

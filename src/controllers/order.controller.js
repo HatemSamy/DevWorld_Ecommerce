@@ -1,9 +1,7 @@
 import Order from '../models/order.model.js';
 import Product from '../models/product.model.js';
-import Coupon from '../models/coupon.model.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
-import { validateCoupon } from './coupon.controller.js';
 import mongoose from 'mongoose';
 
 /**
@@ -12,7 +10,7 @@ import mongoose from 'mongoose';
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res) => {
-  const { items, paymentMethod, shippingAddress, notes, couponCode } = req.body;
+  const { items, paymentMethod, shippingAddress, notes } = req.body;
 
   // Start a session for transaction
   const session = await mongoose.startSession();
@@ -49,51 +47,16 @@ export const createOrder = asyncHandler(async (req, res) => {
       await product.save({ session });
     }
 
-    // Initialize order data
-    let totalAmount = subtotal;
-    let discountAmount = 0;
-    let discountValue = null;
-    let appliedCouponCode = null;
-
-    // Apply coupon if provided
-    if (couponCode && couponCode.trim()) {
-      const couponValidation = await validateCoupon(couponCode, subtotal);
-
-      if (!couponValidation.isValid) {
-        throw ApiError.badRequest(couponValidation.message);
-      }
-
-      // Calculate final amounts
-      discountAmount = couponValidation.discountAmount;
-      discountValue = couponValidation.coupon.value;
-      appliedCouponCode = couponValidation.coupon.code;
-      totalAmount = subtotal - discountAmount;
-
-      // Increment coupon usage count atomically
-      await Coupon.findByIdAndUpdate(
-        couponValidation.coupon._id,
-        { $inc: { usedCount: 1 } },
-        { session }
-      );
-    }
-
-    // Create order with coupon snapshot if applicable
+    // Create order
     const orderData = {
       user: req.user._id,
       items: processedItems,
       subtotal,
-      totalAmount,
+      totalAmount: subtotal,
       paymentMethod,
       shippingAddress,
       notes
     };
-
-    // Add coupon fields only if coupon was applied
-    if (appliedCouponCode) {
-      orderData.couponCode = appliedCouponCode;
-      orderData.discountValue = discountValue;
-      orderData.discountAmount = discountAmount;
-    }
 
     const order = await Order.create([orderData], { session });
 
@@ -105,7 +68,8 @@ export const createOrder = asyncHandler(async (req, res) => {
     await order[0].populate('items.product', 'name images');
     await order[0].populate('paymentMethod', 'name');
 
-    // Prepare clear response with pricing breakdown
+
+    // Prepare clear response
     const responseData = {
       orderId: order[0]._id,
       orderCode: order[0].orderCode,
@@ -115,19 +79,8 @@ export const createOrder = asyncHandler(async (req, res) => {
       shippingAddress: order[0].shippingAddress,
       notes: order[0].notes,
       status: order[0].status,
-
-      // Clear pricing breakdown
-      pricing: {
-        subtotal: subtotal,
-        totalBeforeDiscount: subtotal,
-        discount: appliedCouponCode ? {
-          couponCode: appliedCouponCode,
-          discountPercentage: discountValue,
-          discountAmount: discountAmount
-        } : null,
-        totalAfterDiscount: totalAmount,
-      },
-
+      subtotal: subtotal,
+      totalAmount: subtotal,
       createdAt: order[0].createdAt,
       updatedAt: order[0].updatedAt
     };
@@ -216,9 +169,6 @@ export const getOrder = asyncHandler(async (req, res) => {
     date: order.createdAt,
     status: order.status,
     subtotal: order.subtotal || order.totalAmount,
-    couponCode: order.couponCode || null,
-    discountValue: order.discountValue || null,
-    discountAmount: order.discountAmount || 0,
     totalAmount: order.totalAmount,
 
     // Full customer details for all users

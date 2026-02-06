@@ -37,6 +37,10 @@ export const localizeDocument = (doc, language = 'en') => {
         localized.title = getLocalizedField(localized.title, language);
     }
 
+      if (localized.attributes instanceof Map) {
+        localized.attributes = Object.fromEntries(localized.attributes);
+    }
+
     return localized;
 };
 

@@ -5,12 +5,25 @@ import { validation } from '../middlewares/validation.middleware.js';
 import {
     createCouponSchema,
     updateCouponSchema,
-    listCouponsQuerySchema
+    listCouponsQuerySchema,
+    applyCouponSchema
 } from '../validations/coupon.validation.js';
 
 const router = express.Router();
 
-// All routes require authentication and admin/superAdmin role
+/**
+ * @route   POST /api/v1/coupons/apply
+ * @desc    Apply coupon to calculate discount (preview)
+ * @access  Private (All authenticated users)
+ */
+router.post(
+    '/apply',
+    protect,
+    validation({ body: applyCouponSchema }),
+    couponController.applyCoupon
+);
+
+// All routes below require authentication and admin/superAdmin role
 router.use(protect);
 router.use(authorize('admin', 'superAdmin'));
 
