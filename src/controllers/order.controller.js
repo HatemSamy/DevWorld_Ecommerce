@@ -3,21 +3,112 @@ import Product from '../models/product.model.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
 import mongoose from 'mongoose';
+import { validateCoupon } from './coupon.controller.js';
 
 /**
  * @desc    Create new order
  * @route   POST /api/v1/orders
  * @access  Private
  */
-export const createOrder = asyncHandler(async (req, res) => {
-  const { items, paymentMethod, shippingAddress, notes } = req.body;
+// export const createOrder = asyncHandler(async (req, res) => {
+//   const { items, paymentMethod, shippingAddress, notes } = req.body;
 
-  // Start a session for transaction
+//   // Start a session for transaction
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // Calculate subtotal and validate products
+//     let subtotal = 0;
+//     const processedItems = [];
+
+//     for (const item of items) {
+//       const product = await Product.findById(item.product).session(session);
+
+//       if (!product) {
+//         throw ApiError.notFound(`Product not found: ${item.product}`);
+//       }
+
+//       if (product.stock < item.quantity) {
+//         throw ApiError.badRequest(`Insufficient stock for product: ${product.name.en}`);
+//       }
+
+//       const effectivePrice = product.price;
+//       subtotal += effectivePrice * item.quantity;
+
+//       processedItems.push({
+//         product: item.product,
+//         quantity: item.quantity,
+//         priceAtPurchase: effectivePrice,
+//         attributesSelected: item.attributesSelected || {}
+//       });
+
+//       // Reduce stock
+//       product.stock -= item.quantity;
+//       await product.save({ session });
+//     }
+
+//     // Create order
+//     const orderData = {
+//       user: req.user._id,
+//       items: processedItems,
+//       subtotal,
+//       totalAmount: subtotal,
+//       paymentMethod,
+//       shippingAddress,
+//       notes
+//     };
+
+//     const order = await Order.create([orderData], { session });
+
+//     // Commit the transaction
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     // Populate order details
+//     await order[0].populate('items.product', 'name images');
+//     await order[0].populate('paymentMethod', 'name');
+
+
+//     // Prepare clear response
+//     const responseData = {
+//       orderId: order[0]._id,
+//       orderCode: order[0].orderCode,
+//       user: order[0].user,
+//       items: order[0].items,
+//       paymentMethod: order[0].paymentMethod,
+//       shippingAddress: order[0].shippingAddress,
+//       notes: order[0].notes,
+//       status: order[0].status,
+//       subtotal: subtotal,
+//       totalAmount: subtotal,
+//       createdAt: order[0].createdAt,
+//       updatedAt: order[0].updatedAt
+//     };
+
+//     res.status(201).json({
+//       success: true,
+//       message: 'Order placed successfully',
+//       data: responseData
+//     });
+//   } catch (error) {
+//     // Rollback transaction on error
+//     await session.abortTransaction();
+//     session.endSession();
+//     throw error;
+//   }
+// });
+
+
+
+
+export const createOrder = asyncHandler(async (req, res) => {
+  const { items, paymentMethod, shippingAddress, notes, couponCode } = req.body;
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // Calculate subtotal and validate products
     let subtotal = 0;
     const processedItems = [];
 
@@ -42,9 +133,25 @@ export const createOrder = asyncHandler(async (req, res) => {
         attributesSelected: item.attributesSelected || {}
       });
 
-      // Reduce stock
       product.stock -= item.quantity;
       await product.save({ session });
+    }
+
+    // ---------------------------
+    // ✅ APPLY COUPON (if exists)
+    // ---------------------------
+    let discountAmount = 0;
+    let totalAmount = subtotal;
+
+    if (couponCode) {
+      const couponValidation = await validateCoupon(couponCode, subtotal);
+
+      if (!couponValidation.isValid) {
+        throw ApiError.badRequest(couponValidation.message);
+      }
+
+      discountAmount = couponValidation.discountAmount;
+      totalAmount = subtotal - discountAmount;
     }
 
     // Create order
@@ -52,24 +159,22 @@ export const createOrder = asyncHandler(async (req, res) => {
       user: req.user._id,
       items: processedItems,
       subtotal,
-      totalAmount: subtotal,
+      orderTotalPrice: totalAmount,
       paymentMethod,
       shippingAddress,
-      notes
+      notes,
+      couponCode: couponCode || null,
+      discountAmount
     };
 
     const order = await Order.create([orderData], { session });
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
-    // Populate order details
     await order[0].populate('items.product', 'name images');
     await order[0].populate('paymentMethod', 'name');
 
-
-    // Prepare clear response
     const responseData = {
       orderId: order[0]._id,
       orderCode: order[0].orderCode,
@@ -79,8 +184,8 @@ export const createOrder = asyncHandler(async (req, res) => {
       shippingAddress: order[0].shippingAddress,
       notes: order[0].notes,
       status: order[0].status,
-      subtotal: subtotal,
-      totalAmount: subtotal,
+      total: subtotal,
+      totalAfterDiscount: totalAmount,
       createdAt: order[0].createdAt,
       updatedAt: order[0].updatedAt
     };
@@ -90,13 +195,14 @@ export const createOrder = asyncHandler(async (req, res) => {
       message: 'Order placed successfully',
       data: responseData
     });
+
   } catch (error) {
-    // Rollback transaction on error
     await session.abortTransaction();
     session.endSession();
     throw error;
   }
 });
+
 
 /**
  * @desc    Get user's orders
@@ -114,7 +220,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
     orderCode: order.orderCode,
     date: order.createdAt,
     status: order.status,
-    totalAmount: order.totalAmount,
+    totalAmount: order.orderTotalPrice,
     paymentMethod: order.paymentMethod?.name || 'cash',
     shippingAddress: {
       street: order.shippingAddress.street,
@@ -168,8 +274,8 @@ export const getOrder = asyncHandler(async (req, res) => {
     orderNumber: `#${order._id.toString().slice(-8).toUpperCase()}`,
     date: order.createdAt,
     status: order.status,
-    subtotal: order.subtotal || order.totalAmount,
-    totalAmount: order.totalAmount,
+    total: order.subtotal || order.orderTotalPrice,
+    totalAfterDiscount: order.orderTotalPrice,
 
     // Full customer details for all users
     customer: {
@@ -242,7 +348,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     orderCode: order.orderCode,
     date: order.createdAt,
     status: order.status,
-    totalAmount: order.totalAmount,
+    totalAmount: order.orderTotalPrice,
     paymentMethod: order.paymentMethod?.name || 'cash',
     customer: {
       id: order.user._id,

@@ -64,9 +64,9 @@ const orderSchema = new mongoose.Schema(
             type: Number,
             min: 0
         },
-        totalAmount: {
+        orderTotalPrice: {
             type: Number,
-            required: [true, 'Total amount is required'],
+            required: [true, 'Order total price is required'],
             min: 0
         },
         status: {
