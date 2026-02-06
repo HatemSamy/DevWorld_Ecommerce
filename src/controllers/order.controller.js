@@ -1,5 +1,6 @@
 import Order from '../models/order.model.js';
 import Product from '../models/product.model.js';
+import Coupon from '../models/coupon.model.js';
 import { asyncHandler } from '../utils/asyncHandler.util.js';
 import { ApiError } from '../utils/ApiError.js';
 import mongoose from 'mongoose';
@@ -142,6 +143,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     // ---------------------------
     let discountAmount = 0;
     let totalAmount = subtotal;
+    let appliedCoupon = null;
 
     if (couponCode) {
       const couponValidation = await validateCoupon(couponCode, subtotal);
@@ -152,6 +154,14 @@ export const createOrder = asyncHandler(async (req, res) => {
 
       discountAmount = couponValidation.discountAmount;
       totalAmount = subtotal - discountAmount;
+      appliedCoupon = couponValidation.coupon;
+
+      // Increment coupon usage count within the transaction
+      await Coupon.findByIdAndUpdate(
+        appliedCoupon._id,
+        { $inc: { usedCount: 1 } },
+        { session }
+      );
     }
 
     // Create order
@@ -411,6 +421,15 @@ export const cancelOrder = asyncHandler(async (req, res) => {
       product.stock += item.quantity;
       await product.save();
     }
+  }
+
+  // Restore coupon usage count if a coupon was used
+  if (order.couponCode) {
+    await Coupon.findOneAndUpdate(
+      { code: order.couponCode },
+      { $inc: { usedCount: -1 } },
+      { runValidators: false } // Don't validate as we're decrementing
+    );
   }
 
   // Update order status to cancelled

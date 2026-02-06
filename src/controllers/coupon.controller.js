@@ -136,13 +136,26 @@ export const getAllCoupons = asyncHandler(async (req, res) => {
         Coupon.countDocuments(query)
     ]);
 
+    // Transform coupons to remove null values
+    const formattedCoupons = coupons.map(coupon => {
+        const couponObj = coupon.toObject();
+
+        // Remove null values for optional fields
+        if (couponObj.usageLimit === null) delete couponObj.usageLimit;
+        if (couponObj.minOrderAmount === null) delete couponObj.minOrderAmount;
+        if (couponObj.maxDiscountAmount === null) delete couponObj.maxDiscountAmount;
+        if (couponObj.expiresAt === null) delete couponObj.expiresAt;
+
+        return couponObj;
+    });
+
     res.status(200).json({
         success: true,
-        count: coupons.length,
+        count: formattedCoupons.length,
         total,
         page: Number(page),
         pages: Math.ceil(total / Number(limit)),
-        data: coupons
+        data: formattedCoupons
     });
 });
 
